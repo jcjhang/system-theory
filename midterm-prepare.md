@@ -248,7 +248,7 @@ $$\frac{\partial f}{\partial u_1} = r_1 u_1 + r_{12}u_2, \qquad \frac{\partial f
 | $x^T M u$（$x$ 跟 $u$ 無關） | $M^T x$ | $mxu \to mx$ |
 | $\tfrac{1}{2}(Ax + Bu)^T S (Ax + Bu)$ | $B^T S (Ax + Bu)$ | 連鎖律：外層 $S(\cdot)$ 乘上內層導數 $B^T$ |
 
-> **符號：$u^*$（讀作 u-star）** = 「**最佳的** $u$」，也就是讓成本最小的那個 $u$。星號 $*$ 在這門課都是「最佳」的意思：$u^*$ 最佳控制、$x^*$ 最佳軌跡、$J^*$ 最小成本。沒有星號的 $u$ 是「任意一個候選的 $u$」。
+> **符號：$u^*$（讀作 u-star）** = 「**最佳的** $u$」，也就是讓成本最小的那個 $u$。星號 $*$ 在這門課都是「最佳」的意思：$u^*$ 最佳控制、$x^*$ 最佳軌跡、$J^*$ 最小成本（$J$ 是 Ch 2 起「總成本」的代號，§2.1 定義；Ch 1 的成本還叫 $L$，所以最小成本寫 $L^*$）。沒有星號的 $u$ 是「任意一個候選的 $u$」。
 
 **小預告：Kalman gain 就是這樣來的。** 在 §6.3 用 HJB 推 LQR 時，要最小化
 $$\tfrac{1}{2}u^T R u + x^T S B u \quad(\text{其他跟 } u \text{ 無關的項省略})$$
@@ -393,7 +393,43 @@ $$H(x, u, \lambda) = L(x, u) + \lambda^T f(x, u)$$
 **必要條件（三兄弟）**：
 $$\frac{\partial H}{\partial \lambda} = 0 \quad(\text{約束}), \quad \frac{\partial H}{\partial x} = 0, \quad \frac{\partial H}{\partial u} = 0$$
 
-**$\lambda$ 有什麼意義？** $\lambda$ 就是「這條約束的價格」——約束放鬆一點，最小值會下降多少。這在動態問題中會變成 **costate**。
+**$\lambda$ 有什麼意義？** $\lambda$ 就是「這條約束的價格」——約束改動一點，最小成本會跟著變多少（下面馬達例子會實際算給你看）。這在動態問題中會變成 **costate**。
+
+**馬達例子：把 §1.1 用 Lagrange 重做一次**
+
+§1.1 我們偷懶了：直接把穩態條件 $\omega = u$ 代進去。現在把它當成**約束**正式處理：
+- 成本：$L(\omega, u) = \tfrac12(\omega - \omega_{\text{ref}})^2 + \tfrac12 r u^2$
+- 約束（穩態 $\dot\omega = 0$）：$f(\omega, u) = -\omega + u = 0$
+- 這裡 $\omega$ 扮演 $x$ 的角色，$u$ 還是控制
+
+**Step 1：寫 Hamiltonian**
+$$H = \tfrac12(\omega - \omega_{\text{ref}})^2 + \tfrac12 r u^2 + \lambda(-\omega + u)$$
+
+**Step 2：三兄弟**
+$$\frac{\partial H}{\partial \lambda} = -\omega + u = 0 \;\Rightarrow\; \omega = u \qquad(\text{就是約束本身})$$
+$$\frac{\partial H}{\partial \omega} = (\omega - \omega_{\text{ref}}) - \lambda = 0 \;\Rightarrow\; \lambda = \omega - \omega_{\text{ref}}$$
+$$\frac{\partial H}{\partial u} = r u + \lambda = 0 \;\Rightarrow\; \lambda = -r u$$
+
+**Step 3：解聯立**
+後兩條的 $\lambda$ 相等：$\omega - \omega_{\text{ref}} = -ru$，再代入 $\omega = u$：
+$$u(1 + r) = \omega_{\text{ref}} \;\Rightarrow\; \boxed{u^* = \frac{\omega_{\text{ref}}}{1+r}}, \qquad \lambda^* = -\frac{r\,\omega_{\text{ref}}}{1+r}$$
+**跟 §1.1 答案一模一樣** ✓，而且還多拿到一個 $\lambda^*$。
+
+**代數字**：$\omega_{\text{ref}} = 10$、$r = 1$
+- $u^* = 5$、$\omega^* = 5$、$\lambda^* = -5$
+- 最小成本：把 $\omega^*, u^*$ 代回成本函數 $L$，記作 $L^* = L(\omega^*, u^*) = \tfrac12(5-10)^2 + \tfrac12\cdot 5^2 = 25$
+
+**$\lambda$ 是「價格」的實際意思**：假設馬達多了一個固定負載 $c$，穩態約束變成 $-\omega + u = c$（也就是 $\omega = u - c$，同樣電壓轉得比較慢）。重新求最小成本會得到
+$$L^*(c) = \frac{(10 + c)^2}{4}$$
+- $c = 0$：$L^* = 25$（跟上面一樣）
+- $c = 1$：$L^* = 30.25$，多了約 5
+- 導數：$\dfrac{dL^*}{dc}\Big\rvert_{c=0} = 5 = -\lambda^*$
+
+也就是說，**約束每改一單位，最小成本就變 $\lvert\lambda^*\rvert$ 這麼多**（正負號看約束怎麼寫，這裡是 $dL^*/dc = -\lambda^*$）。$\lambda$ 不只是解題工具，它本身就帶著「這條約束有多貴」的資訊。
+
+**既然直接代入就能解，為什麼要學 Lagrange？**
+- 這個例子的約束很簡單，可以直接解出 $\omega = u$。但很多約束解不出來（例如非線性），Lagrange 不需要先解約束
+- 到了 Ch 2、Ch 3，**每一個時間點**都有一條約束（狀態方程 $x_{k+1} = f(x_k, u_k)$），根本不可能一一代入。這時每個時間點配一個 $\lambda_k$，就是 **costate**，而三兄弟就變成 Ch 2 那張「狀態方程、共態方程、駐點條件」的表
 
 ---
 

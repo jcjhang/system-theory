@@ -1,1 +1,2 @@
 *.docx diff=docx
+*.pdf diff=pdf

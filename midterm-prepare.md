@@ -250,9 +250,9 @@ $$\frac{\partial f}{\partial u_1} = r_1 u_1 + r_{12}u_2, \qquad \frac{\partial f
 
 > **符號：$u^*$（讀作 u-star）** = 「**最佳的** $u$」，也就是讓成本最小的那個 $u$。星號 $*$ 在這門課都是「最佳」的意思：$u^*$ 最佳控制、$x^*$ 最佳軌跡、$J^*$ 最小成本（$J$ 是 Ch 2 起「總成本」的代號，§2.1 定義；Ch 1 的成本還叫 $L$，所以最小成本寫 $L^*$）。沒有星號的 $u$ 是「任意一個候選的 $u$」。
 
-**小預告：Kalman gain 就是這樣來的。** 在 §6.3 用 HJB 推 LQR 時，要最小化
-$$\tfrac{1}{2}u^T R u + x^T S B u \quad(\text{其他跟 } u \text{ 無關的項省略})$$
-套上表：$Ru + B^T S x = 0 \Rightarrow u^* = -R^{-1}B^T S x$。**一行就推完了**，這就是 $K = R^{-1}B^TS$。
+**小預告：Kalman gain 就是這樣來的。** 連續 LQR（§3.3.2）的駐點條件，就是要最小化
+$$\tfrac{1}{2}u^T R u + \lambda^T B u \quad(\text{其他跟 } u \text{ 無關的項省略})$$
+套上表：$Ru + B^T\lambda = 0$；再用 §2.2.2 的猜法 $\lambda = Sx$，得 $u^* = -R^{-1}B^T S x$。**一行就推完了**，這就是 $K = R^{-1}B^TS$。（離散版 §2.2.2 用的是同一招，只是多了 $B^TSB$ 一項，原因見 §3.3.3；§6.3 用 HJB 推 LQR 時也會再遇到同一個式子。）
 
 ### 0.6 極值的判斷（多變數微積分）
 
@@ -859,61 +859,383 @@ LQR 的「猜 $\lambda_k = S_k x_k$」只有在**線性系統 + 二次成本**�
 
 ## 三、Lewis Ch 3：連續時間最佳控制
 
-### 大意
+### 大意：從 Ch 2 到 Ch 3 多了什麼？
 
-跟 Ch 2 一模一樣，但**時間變成連續**：sum 變積分、difference 變微分。故事結構完全相同。
+Ch 2 每隔一段時間（馬達例子是 0.1 秒）才做一次決定。但真實的馬達、飛機、溫度都是**連續**在變的，控制也可以隨時調整。Ch 3 就是把 Ch 2 的時間格子**切到無限細**。
 
-### 3.1 & 3.2 一般問題
+**好消息：故事完全一樣**，只是換符號：
 
-- 系統：$\dot x = f(x, u, t)$
-- 成本：$J = \phi(x(T), T) + \int_{t_0}^T L(x, u, t)\, dt$
-- Hamiltonian：$H = L + \lambda^T f$
+| | Ch 2（離散） | Ch 3（連續） |
+|---|---|---|
+| 時間 | $k = 0, 1, \dots, N$ | $t$ 從 $t_0$ 連續走到 $T$ |
+| 系統 | $x_{k+1} = f(x_k, u_k)$ | $\dot x = f(x, u, t)$ |
+| 成本 | $\phi(x_N) + \sum L$ | $\phi(x(T)) + \int L\, dt$ |
+| 控制 | 一串數字 $u_0, \dots, u_{N-1}$ | 一條曲線 $u(t)$ |
+| 共態 | 一串數字 $\lambda_1, \dots, \lambda_N$ | 一條曲線 $\lambda(t)$ |
+| Hamiltonian | $H^k = L + \lambda_{k+1}^T f$ | $H = L + \lambda^T f$ |
+| 兩點邊值 | $x_0$ 在頭、$\lambda_N$ 在尾 | $x(t_0)$ 在頭、$\lambda(T)$ 在尾 |
+| LQR | Riccati **差分**方程 | Riccati **微分**方程 |
+| 穩態 | DARE | ARE |
+| 閉迴路穩定 | $\lvert\lambda\rvert < 1$ | $\text{Re}(\lambda) < 0$ |
 
-**必要條件（跟離散版對照）**：
-| 離散 | 連續 |
-|---|---|
-| $x_{k+1} = \partial H/\partial \lambda_{k+1}$ | $\dot x = \partial H/\partial \lambda$ |
-| $\lambda_k = \partial H/\partial x_k$ | $-\dot \lambda = \partial H/\partial x$（多一個負號！） |
-| $0 = \partial H/\partial u_k$ | $0 = \partial H/\partial u$ |
+**核心想法：連續 = 離散的取樣時間 $\Delta t \to 0$。** 本章會一直用這個想法：連續版的每一條公式，都可以從 Ch 2 的公式取極限得到，**不用重新背一套**。
 
-**注意連續版共態方程多一個負號**：$-\dot\lambda = \partial H/\partial x$。這是連續版的坑，容易寫錯。
+**兩個馬達版本怎麼對應？** Ch 2 的 $\omega_{k+1} = 0.9\,\omega_k + 0.1\,u_k$，就是連續 $\dot\omega = -\omega + u$ 用 $\Delta t = 0.1$ 做 Euler 近似：
+$$\omega_{k+1} = \omega_k + \Delta t\,(-\omega_k + u_k) = (1 - \Delta t)\,\omega_k + \Delta t\, u_k$$
+成本也要對應：積分 $\int L\, dt \approx \sum L\,\Delta t$，所以每一步的成本應該乘上 $\Delta t$。
 
-**邊界條件**：$x(t_0)$ 給定；末態的處理和離散類似。
+（Ch 2 例子的 $Q = R = 1$ 沒有乘 0.1，等於每步的權重都放大了 10 倍。不過 **$Q$、$R$ 同乘一個數不會改變 $K$**，只會讓 $S$ 跟著放大同樣倍數——成本整個乘 10，最佳的 $u$ 不會變。§3.3.5 比較數字時會用到這點。）
+
+### 3.1 變分法 (Calculus of Variations)
+
+Lewis §3.1 很短，只是介紹「對**函數**求極值」的工具：以前是找一個**數字** $u$ 讓成本最小，現在要找一整條**曲線** $u(t)$。完整的推導（Euler-Lagrange 方程）Żak §5.2 講得比較清楚，放在本筆記第八章。
+
+這章只需要知道：連續時間的必要條件，就是對 $x(t)$、$u(t)$、$\lambda(t)$ 這三條曲線**各自要求「微調不會讓成本變小」**。跟 Ch 1 的三兄弟、Ch 2 的三個條件是同一個精神。
+
+### 3.2 一般問題
+
+#### 3.2.1 問題長什麼樣
+
+- **系統**：$\dot x = f(x, u, t)$，$x(t_0)$ 已知
+- **成本**：
+$$J = \underbrace{\phi(x(T), T)}_{\text{終點成本}} + \int_{t_0}^{T} \underbrace{L(x, u, t)}_{\text{每一瞬間的成本率}}\, dt$$
+- **（可選）終點約束**：$\psi(x(T), T) = 0$，例如「終點的位置一定要是 0，速度不管」
+- **目標**：選整條控制曲線 $u(t)$（$t_0 \le t \le T$），讓 $J$ 最小
+
+$\phi$ 和 $T$ 的角色跟 Ch 2 的 $\phi$、$N$ 完全一樣（見 2.1.1）。$L$ 現在是**成本率**（每秒付多少），所以要積分。
+
+#### 3.2.2 三個條件
+
+**Hamiltonian**：
+$$H(x, u, \lambda, t) = L + \lambda^T f$$
+（這次 $\lambda$ 不用標 $k+1$：連續時間裡「這一瞬間」和「下一瞬間」是同一個 $t$。）
+
+| 條件 | 寫開來 | 名稱 | 方向 |
+|---|---|---|---|
+| $\dot x = \dfrac{\partial H}{\partial \lambda}$ | $\dot x = f$ | 狀態方程 | 從 $x(t_0)$ **順著時間** |
+| $-\dot\lambda = \dfrac{\partial H}{\partial x}$ | $-\dot\lambda = \left(\dfrac{\partial f}{\partial x}\right)^T \lambda + \dfrac{\partial L}{\partial x}$ | 共態方程 | 從 $\lambda(T)$ **逆著時間** |
+| $0 = \dfrac{\partial H}{\partial u}$ | $0 = \left(\dfrac{\partial f}{\partial u}\right)^T \lambda + \dfrac{\partial L}{\partial u}$ | 駐點條件 | 每一瞬間解出 $u(t)$ |
+
+跟 Ch 2 比：第一條、第三條一模一樣；**第二條多了一個負號**。
+
+#### 3.2.3 負號從哪來？從 Ch 2 取極限
+
+把連續問題切成 $\Delta t$ 的小格子（就像馬達的 0.9 / 0.1 那樣）：
+- 系統：$x_{k+1} = x_k + \Delta t\, f(x_k, u_k)$
+- 每步成本：$L\,\Delta t$
+
+套 Ch 2 的共態方程 $\lambda_k = \partial H^k / \partial x_k$，其中 $H^k = L\,\Delta t + \lambda_{k+1}^T(x_k + \Delta t\, f)$：
+$$\lambda_k = \lambda_{k+1} + \Delta t\left(\frac{\partial L}{\partial x} + \left(\frac{\partial f}{\partial x}\right)^T \lambda_{k+1}\right) = \lambda_{k+1} + \Delta t\, \frac{\partial H}{\partial x}$$
+移項、除以 $\Delta t$：
+$$\frac{\lambda_{k+1} - \lambda_k}{\Delta t} = -\frac{\partial H}{\partial x} \quad\xrightarrow{\ \Delta t \to 0\ }\quad \dot\lambda = -\frac{\partial H}{\partial x}$$
+
+**負號的意思**：Ch 2 的共態方程是「**舊的 = 新的 + 這一步的代價**」（$\lambda_k$ 比 $\lambda_{k+1}$ 多了這一步的 $\Delta t\, \partial H/\partial x$）。但導數 $\dot\lambda$ 的定義是「**新的 − 舊的**」，方向剛好相反，所以多一個負號。
+
+**白話**：$\lambda$ 是「狀態的價格」，衡量的是「從現在到結束的成本」。時間往前走，這一瞬間的代價付掉了，剩下的就少一點——所以 $\dot\lambda = -(\text{這一瞬間付掉的})$。Ch 2 馬達例子的 $\lambda_0 = 18.02 \to \lambda_1 = 8.91 \to \lambda_2 = 0$ 就是這樣一路變小。
+
+**駐點條件為什麼沒有負號？** $\partial H^k / \partial u_k = \Delta t \left(\partial L/\partial u + (\partial f/\partial u)^T \lambda_{k+1}\right) = 0$，兩邊除以 $\Delta t$ 就是 $\partial H/\partial u = 0$。這條沒有「新減舊」，所以不會多出負號。
+
+> ⚠️ **考試最常錯**：把連續共態方程寫成 $\dot\lambda = +\partial H/\partial x$。
+> 記法：跟物理的 Hamilton 方程一樣（2.1.2 選讀）——$\dot q = \partial H/\partial p$、$\dot p = -\partial H/\partial q$。**狀態正號、共態負號。**
+
+#### 3.2.4 邊界條件
+
+跟 Ch 2 的 Step 3 一樣，只是連續時間多了一種情況：**終點時間 $T$ 本身也可以是自由的**。
+
+| 終點情況 | 條件 | 對應 Ch 2 |
+|---|---|---|
+| $T$ 固定、$x(T)$ 自由 | $\lambda(T) = \dfrac{\partial\phi}{\partial x(T)}$ | $\lambda_N = \partial\phi/\partial x_N$ |
+| $T$ 固定、$x(T)$ 固定 $= r$ | $x(T) = r$，$\lambda(T)$ 變成待解的未知數 | $x_N = r_N$ |
+| $T$ 固定、$x(T)$ 部分固定 $\psi(x(T)) = 0$ | $\lambda(T) = \dfrac{\partial\phi}{\partial x} + \left(\dfrac{\partial\psi}{\partial x}\right)^T \nu$（$\nu$ 是新的 multiplier） | — |
+| $T$ 自由（例如最短時間） | 上面的條件之外，再加 $\left(\dfrac{\partial\phi}{\partial t} + \left(\dfrac{\partial\psi}{\partial t}\right)^T\nu + H\right)\Big\rvert_{t=T} = 0$ | 2.1.1 的「越快越好」 |
+
+課本（Lewis 3.2-10）把這些合成一條：
+$$(\phi_x + \psi_x^T \nu - \lambda)^T\big\rvert_T\, dx(T) + (\phi_t + \psi_t^T \nu + H)\big\rvert_T\, dT = 0$$
+
+**讀法**：某個量如果「可以動」（$dx(T) \ne 0$ 或 $dT \ne 0$），它前面的括號就必須 $= 0$；如果它「被固定」（$= 0$），那一項自動消失。上表就是把四種情況代進去的結果，**考試記表就好**。
+
+#### 3.2.5 一個好用的性質：$H$ 沿著最佳軌跡是常數
+
+如果 $f$、$L$ 都**不直接含 $t$**（時不變系統），那沿著最佳解 $H$ 不會變：
+$$\frac{dH}{dt} = \frac{\partial H}{\partial t} + \underbrace{\frac{\partial H}{\partial x}\dot x + \frac{\partial H}{\partial \lambda}\dot\lambda}_{= H_x f + f \cdot (-H_x) = 0} + \underbrace{\frac{\partial H}{\partial u}\dot u}_{H_u = 0} = \frac{\partial H}{\partial t} = 0$$
+（物理上就是**能量守恆**。）
+
+**用途**：$T$ 自由、$\phi$ 不含 $t$ 時，上表最後一行給 $H(T) = 0$，所以**整段都是 $H(t) = 0$**，多了一條方程可以用。Żak Ch 5 的最短時間（bang-bang）問題會用到。
+
+#### 3.2.6 為什麼還是難：兩點邊值問題
+
+跟 2.1.3 一模一樣：$x$ 知道**頭** $x(t_0)$、$\lambda$ 知道**尾** $\lambda(T)$，兩者又互相需要。差別只是從「$2N$ 條差分方程」變成「$2n$ 條微分方程」，一半條件在頭、一半在尾。
+
+一般解法：
+- **線性系統**：常常可以手算解析解（下面 3.2.7 的例子）
+- **非線性系統**：數值解，例如**打靶法**——猜 $\lambda(t_0)$，順著時間積分到 $T$，看邊界條件差多少再修正
+- **LQR**：用 3.3 的 $\lambda = Sx$ 破解，跟 Ch 2 一樣
+
+#### 3.2.7 馬達例子：最省電加速（Lewis Ex 3.2-3 同型題）
+
+這題跟課本 Ex 3.2-3（用最少能量加熱房間）的數學**一模一樣**，只是把溫度換成轉速。考試很可能出這種題型。
+
+**問題**：馬達從靜止 $\omega(0) = 0$ 出發，要在 $T = 1$ 秒時達到 $\omega_{\text{ref}} = 10$，而且**最省電**：
+$$\dot\omega = -\omega + u, \qquad J = \tfrac12 \int_0^1 u^2\, dt$$
+（成本只算電，不算轉速——這裡轉速是「目標」，不是「懲罰」。跟 Ch 2 的例子不同。）
+
+**Step 1：Hamiltonian**
+$$H = \tfrac12 u^2 + \lambda(-\omega + u)$$
+
+**Step 2：三個條件**
+- 狀態：$\dot\omega = -\omega + u$
+- 共態：$-\dot\lambda = \dfrac{\partial H}{\partial \omega} = -\lambda \;\Rightarrow\; \dot\lambda = \lambda \;\Rightarrow\; \lambda(t) = \lambda(1)\, e^{t-1}$
+- 駐點：$0 = \dfrac{\partial H}{\partial u} = u + \lambda \;\Rightarrow\; u = -\lambda$
+
+**Step 3：用 $\lambda(1)$ 表示一切**
+共態方程裡沒有 $\omega$，可以先解（上面已解），只是 $\lambda(1)$ 還不知道。把 $u = -\lambda(1)e^{t-1}$ 代入狀態方程，從 $\omega(0) = 0$ 解出：
+$$\omega(t) = -\lambda(1)\, e^{-1} \sinh t \qquad \left(\sinh t = \tfrac{e^t - e^{-t}}{2}\right)$$
+（驗算：左邊微分 $= -\lambda(1)e^{-1}\cosh t$；右邊 $-\omega + u = \lambda(1)e^{-1}\sinh t - \lambda(1)e^{-1}e^{t} = -\lambda(1)e^{-1}\cosh t$ ✓）
+
+**Step 4a：終點固定 $\omega(1) = 10$**
+$$10 = -\lambda(1)\, e^{-1}\sinh 1 \;\Rightarrow\; \lambda(1) = -\frac{10\,e}{\sinh 1} \approx -23.13$$
+$$\boxed{u^*(t) = \frac{10\, e^{t}}{\sinh 1} \approx 8.51\, e^{t}, \qquad \omega^*(t) = 10\,\frac{\sinh t}{\sinh 1}}$$
+- 電壓從 $u(0) = 8.51$ 一路升到 $u(1) = 23.13$
+- 最小成本 $J^* = \tfrac12\int_0^1 (8.51\,e^t)^2\, dt \approx 115.6$
+
+**為什麼電壓越來越大？** 越早加的電壓，效果越容易被摩擦「吃掉」：$t$ 時刻多出來的轉速，到終點只剩 $e^{-(1-t)}$ 倍。越晚加越划算，所以最佳策略是**前面少加、後面多加**。
+
+這正是 $\lambda(t) = \lambda(1)e^{t-1}$ 在說的事：$\lvert\lambda(t)\rvert$ 是「此刻轉速多一單位值多少」，**越接近終點越值錢**（早期的轉速，最後都會被摩擦耗掉）。
+
+**注意：這是開迴路 (open-loop)**。$u^*(t)$ 只是時間的函數，事先就算好了；中途如果有擾動，它不會修正（2.2.2 講過）。
+
+**Step 4b：終點自由（軟性要求）**
+不強制到 10，改成加一個終點成本 $\phi = \tfrac12 s\,(\omega(1) - 10)^2$。
+- 邊界條件換成：$\lambda(1) = \dfrac{\partial\phi}{\partial\omega(1)} = s\,(\omega(1) - 10)$
+- 再配上 Step 3 的 $\omega(1) = -\lambda(1)e^{-1}\sinh 1 \approx -0.432\,\lambda(1)$，解得：
+$$\omega(1) = \frac{10 \times 0.432\, s}{1 + 0.432\, s}$$
+
+| $s$ | 0 | 1 | 10 | 100 | $\to\infty$ |
+|---|---|---|---|---|---|
+| $\omega(1)$ | 0 | 3.02 | 8.12 | 9.77 | $\to 10$ |
+
+**跟 2.1.1 的 $s$ 表是同一個故事**：$s = 0$ 完全不在意終點 → 乾脆不加電（$u = 0$）；$s \to \infty$ → 等於終點固定（Step 4a）。**終點成本就是「終點固定」的軟性版本。**
 
 ### 3.3 連續 LQR
 
-**設定**：$\dot x = Ax + Bu$，$J = \tfrac{1}{2} x^T(T) S(T) x(T) + \tfrac{1}{2}\int(x^T Q x + u^T R u)\, dt$
+#### 3.3.1 設定
 
-**微分 Riccati 方程**：
-$$\boxed{-\dot S = A^T S + S A - S B R^{-1} B^T S + Q, \quad S(T)\text{ 給定}}$$
+- 系統：$\dot x = Ax + Bu$
+- 成本：
+$$J = \tfrac12 x^T(T)\, S(T)\, x(T) + \tfrac12 \int_{t_0}^{T} (x^T Q x + u^T R u)\, dt$$
+- 權重的意義和要求跟 2.2.1 的表完全一樣：$S(T) \ge 0$、$Q \ge 0$、$R > 0$
 
-從末端 $S(T)$ **逆著時間積分**到 $t = 0$（$t$ 由 $T$ 減到 $0$）。
+#### 3.3.2 一樣猜 $\lambda = S(t)\, x$
 
-**Kalman gain**：$K(t) = R^{-1} B^T S(t)$
-**最佳控制**：$u^*(t) = -K(t) x(t)$
-**最佳成本**：$J^* = \tfrac{1}{2} x_0^T S(t_0) x_0$
+把 2.2.2 的破解法原封不動搬過來：
+$$\lambda(t) = S(t)\, x(t)$$
+（終點：$\lambda(T) = \partial\phi/\partial x = S(T)\,x(T)$，猜法在終點成立 ✓）
 
-### 3.4 穩態問題與代數 Riccati (ARE)
+LQR 的 Hamiltonian：$H = \tfrac12(x^T Q x + u^T R u) + \lambda^T(Ax + Bu)$
 
-當 $T \to \infty$，$S(t)$ 會收斂到一個常數 $S_\infty$，$\dot S = 0$，所以：
-$$\boxed{0 = A^T S + S A - S B R^{-1} B^T S + Q \quad\text{(ARE)}}$$
+**代入駐點條件**：$0 = Ru + B^T\lambda$（用 0.5 的微分表）
+$$\boxed{u^* = -K(t)\, x, \qquad K(t) = R^{-1} B^T S(t)}$$
 
-這叫**代數 Riccati 方程**，是**時不變系統無窮長時間 LQR 的答案**。
+**代入共態方程**：$-\dot\lambda = Qx + A^T\lambda$。左邊用乘法律微分 $\lambda = Sx$：
+$$\dot\lambda = \dot S x + S\dot x = \dot S x + S(A - BR^{-1}B^TS)\,x$$
+代進去：
+$$-\dot S x - SAx + SBR^{-1}B^TSx = Qx + A^TSx$$
+對所有 $x$ 都成立，所以：
+$$\boxed{-\dot S = A^TS + SA - SBR^{-1}B^TS + Q, \qquad S(T)\text{ 給定}}$$
+這就是**微分 Riccati 方程**。
 
-**能不能解出唯一好的答案？** 需要：
-- $(A, B)$ **stabilizable**：不可控的部分自己會穩下來
-- $(A, \sqrt{Q})$ **detectable**：不能觀察的部分自己會穩下來
+**最佳成本**：$J^* = \tfrac12 x_0^T S(t_0)\, x_0$
 
-**馬達例子**：$\dot\omega = -\omega + u$，$J = \tfrac{1}{2}\int(\omega^2 + u^2)\, dt$（$A=-1$, $B=1$, $Q=R=1$）
+**步驟跟 2.2.2 一模一樣**：猜 $\lambda = Sx$ → 駐點條件給出 $u = -Kx$ → 共態方程給出 $S$ 的方程。
 
-ARE（scalar 版）：$0 = -s - s + 1 - s^2 = -2s - s^2 + 1$
-整理：$s^2 + 2s - 1 = 0 \Rightarrow s = -1 + \sqrt 2 \approx 0.414$（取正解）
+#### 3.3.3 為什麼 $K$ 比離散版簡單？
 
-**最佳 gain**：$K = s = 0.414$
-**最佳控制**：$u^* = -0.414\,\omega$
-**閉迴路**：$\dot\omega = -\omega - 0.414\omega = -1.414\omega$
+| | 離散（2.2.2） | 連續 |
+|---|---|---|
+| $K$ | $(B^TS_{k+1}B + R)^{-1} B^TS_{k+1}A$ | $R^{-1}B^TS$ |
 
-**結果解讀**：本來馬達自己會用 $\dot\omega = -\omega$ 的速度歸零（時間常數 1 秒）；加了最佳控制後變 $-1.414\omega$（更快歸零，時間常數約 0.7 秒），代價是花了一些電。
+連續版少了 $B^TSB$，也少了 $A$。用 Euler 近似取極限：$A_d = I + A\Delta t$、$B_d = B\Delta t$、$R_d = R\Delta t$，代入離散公式：
+$$K = (\Delta t^2\, B^TSB + \Delta t\, R)^{-1}\, \Delta t\, B^TS(I + A\Delta t) = (R + \Delta t\, B^TSB)^{-1} B^TS(I + A\Delta t) \;\xrightarrow{\ \Delta t \to 0\ }\; R^{-1}B^TS$$
+
+**直覺**：離散時 $u_k$ 要「維持一整格」，會實實在在改變下一步的狀態，所以要把「改變狀態造成的未來成本」$B^TSB$ 也算進去。連續時，每一瞬間的 $u$ 只推動狀態一點點（$\Delta t$ 那麼多），這一項變成高階的小量而消失，只剩電費 $R$。
+
+#### 3.3.4 Riccati 怎麼解：逆著時間積分
+
+- 這是一條**微分方程**，條件給在**終點** $S(T)$，所以要從 $T$ 往回積分到 $t_0$（跟 2.2.3 從 $S_N$ 逆著時間算一樣）
+- **實作技巧**（Lewis 3.3）：令 $\tau = T - t$（「剩下多少時間」），方程變成
+$$\frac{dS}{d\tau} = A^TS + SA - SBR^{-1}B^TS + Q, \qquad S\big\rvert_{\tau = 0} = S(T)$$
+  負號不見了，從 $\tau = 0$ 順著積分就好，一般的 ODE 求解器都能用
+- 純量 (scalar) 情況可以用分離變數得到解析解（Lewis Ex 3.3-4），但考試多半只要求**寫出方程**或**求穩態解**（3.4）
+
+#### 3.3.5 馬達例子：連續版的 2.2.4 / 2.2.5
+
+$\dot\omega = -\omega + u$，$J = \tfrac12\int_0^T (\omega^2 + u^2)\, dt$，$S(T) = 0$。也就是 $A = -1$、$B = 1$、$Q = R = 1$。
+
+Scalar Riccati：
+$$-\dot s = -2s - s^2 + 1, \qquad s(T) = 0, \qquad K = s$$
+用剩餘時間 $\tau = T - t$ 寫：$\dfrac{ds}{d\tau} = 1 - 2s - s^2$
+
+**增益隨「剩多少時間」的變化，跟 Ch 2 對照**（離散版的成本已經乘上 $\Delta t$，前面說過這不影響 $K$）：
+
+| 剩餘時間 $\tau$ | 0.1 | 0.2 | 0.5 | 1 | 2 | 3 | $\infty$ |
+|---|---|---|---|---|---|---|---|
+| 離散 $\Delta t = 0.1$（**就是 2.2.5 的表**） | 0 | 0.089 | 0.256 | 0.354 | 0.382 | 0.384 | 0.384 |
+| 離散 $\Delta t = 0.01$ | 0.082 | 0.156 | 0.297 | 0.383 | 0.410 | 0.411 | 0.411 |
+| **連續** | 0.090 | 0.163 | 0.301 | 0.386 | 0.413 | 0.414 | **0.414** |
+
+**看出什麼？**
+1. **形狀一樣**：離終點近 → $K$ 小（快結束了，花電不划算）；離終點遠 → 收斂到常數
+2. **$\Delta t$ 越小，離散越接近連續**。Ch 2 的 $K_\infty = 0.384$ 跟連續的 $0.414$ 差一點，是因為 0.1 秒的格子還不夠細
+3. **$S$ 也一樣**：Ch 2 的 $S_\infty = 4.45$ 乘上 $\Delta t = 0.1$ 得 $0.445$，跟連續的 $0.414$ 很接近（$\Delta t = 0.01$ 時是 $0.417$）
+4. **終點權重不影響長期增益**：改成 $S(T) = 10$，$s$ 從 10 一路降到 $\tau = 1$ 時的 0.55、$\tau = 2$ 時的 0.42、$\tau = 3$ 時的 0.415——還是收斂到 0.414（同 2.2.5「$S_N$ 選不同值，最後都收斂到同一個 $K_\infty$」）
+
+### 3.4 穩態：代數 Riccati 方程 (ARE)
+
+#### 3.4.1 從 Riccati 到 ARE
+
+當 $T \to \infty$（或離終點夠遠），$S$ 不再變化，$\dot S = 0$：
+$$\boxed{0 = A^TS + SA - SBR^{-1}B^TS + Q \quad\text{(ARE)}}$$
+這跟 2.2.5 的 DARE 是同一個想法：令 $S_k = S_{k+1}$。
+
+得到的 $K_\infty = R^{-1}B^TS_\infty$ 是**常數**，$u = -K_\infty x$ 就是一個**固定增益的回授控制**，實務上最常用。它也是無窮時間成本 $J = \tfrac12\int_0^\infty (x^TQx + u^TRu)\, dt$ 的真正最佳解。
+
+#### 3.4.2 ARE 什麼時候有好的解？
+
+ARE 是**二次方程**，可能有好幾個解（馬達例子就有兩個根）。要挑對的那一個：
+- $(A, B)$ **stabilizable** → 存在有界的極限解 $S_\infty \ge 0$
+- 再加上 $(A, \sqrt Q)$ **observable**（$\sqrt Q$ 指任何滿足 $C^TC = Q$ 的 $C$）→ $S_\infty > 0$ 唯一，而且閉迴路 $A - BK_\infty$ **漸近穩定**
+- 只要求 detectable 也行，但這時 $S_\infty$ 只保證 $\ge 0$
+
+**白話**：
+- **stabilizable**：不穩定的部分，控制推得動
+- **observable / detectable**：不穩定的部分，成本看得到（看不到就不會想去修它）
+
+兩個都滿足，LQR 就**保證**閉迴路穩定。這就是 Żak Ch 3 可控性、可觀察性派上用場的地方。
+
+**挑解規則**：取**正定**的那個解（純量就取正的根），它同時也是讓閉迴路穩定的那個。
+
+#### 3.4.3 馬達（一維）
+
+ARE：$0 = -2s - s^2 + 1 \;\Rightarrow\; s^2 + 2s - 1 = 0 \;\Rightarrow\; s = -1 \pm \sqrt 2$
+
+- 取正根 $s = \sqrt 2 - 1 \approx 0.414$（另一根 $-2.414$ 是負的，不是正定）
+- $K = 0.414$，$u^* = -0.414\,\omega$
+- 閉迴路：$\dot\omega = -\omega - 0.414\,\omega = -1.414\,\omega$ → 穩定 ✓
+- **錯的根會怎樣？** $K = -2.414$ → $\dot\omega = (-1 + 2.414)\,\omega = +1.414\,\omega$，**爆炸**。錯的根剛好就是讓系統不穩定的那個
+- 條件檢查：$(A, B) = (-1, 1)$ 可控、$(A, \sqrt Q) = (-1, 1)$ 可觀察 ✓
+
+**結果解讀**：馬達本來自己會以 $\dot\omega = -\omega$ 歸零（時間常數 1 秒）；加了最佳控制變成 $-1.414\,\omega$（時間常數約 0.7 秒，收斂更快），代價是花了一些電。
+
+**一般的 $q$、$r$ 會怎樣？** $J = \tfrac12\int(q\omega^2 + ru^2)\, dt$，ARE 解出
+$$K = -1 + \sqrt{1 + q/r}, \qquad \text{閉迴路極點} = -\sqrt{1 + q/r}$$
+- $q/r \to 0$（電很貴）：$K \to 0$，極點 $\to -1$，就是馬達原本的樣子（不控制）
+- $q/r$ 越大：極點往左移，收斂越快，但越耗電
+- **只跟比值 $q/r$ 有關**（呼應「$Q$、$R$ 同乘一個數不改變 $K$」）
+
+#### 3.4.4 馬達（二維）：用 LQR 設計位置控制器
+
+這是課本 Ex 3.4-1（Newton 系統）的同型題，**2×2 ARE 手解**很可能考。
+
+**問題**：讓馬達的**角度**回到 0。
+$$A = \begin{bmatrix}0 & 1\\ 0 & -1\end{bmatrix},\quad B = \begin{bmatrix}0\\ 1\end{bmatrix},\quad Q = \begin{bmatrix}1 & 0\\ 0 & 0\end{bmatrix}\ (\text{只在意角度}),\quad R = 1$$
+回顧 0.3.2：不控制時特徵值是 $0, -1$，角度停在某處，不會回到 0。
+
+**Step 1：設 $S$**，令 $S = \begin{bmatrix}s_1 & s_2\\ s_2 & s_3\end{bmatrix}$（對稱，所以只有 3 個未知數）
+
+**Step 2：算各項**
+$$A^TS + SA = \begin{bmatrix}0 & s_1 - s_2\\ s_1 - s_2 & 2(s_2 - s_3)\end{bmatrix}, \qquad SBR^{-1}B^TS = \begin{bmatrix}s_2^2 & s_2 s_3\\ s_2 s_3 & s_3^2\end{bmatrix}$$
+
+**Step 3：ARE 的三個元素各自 $= 0$**（從最簡單的開始解）
+- (1,1)：$-s_2^2 + 1 = 0 \;\Rightarrow\; s_2 = 1$
+  （$s_2 = -1$ 代入下一條會得到複數，所以不要）
+- (2,2)：$2(s_2 - s_3) - s_3^2 = 0 \;\Rightarrow\; s_3^2 + 2s_3 - 2 = 0 \;\Rightarrow\; s_3 = -1 + \sqrt 3 \approx 0.732$（取正）
+- (1,2)：$s_1 - s_2 - s_2 s_3 = 0 \;\Rightarrow\; s_1 = 1 + 0.732 = 1.732$
+
+**Step 4：檢查正定**（0.4 的 2×2 速算）：$s_1 = 1.732 > 0$、$\det S = 1.732 \times 0.732 - 1 = 0.268 > 0$ ✓
+
+**Step 5：增益**
+$$K = R^{-1}B^TS = [\,s_2\ \ s_3\,] = [\,1\ \ 0.732\,], \qquad u^* = -\theta - 0.732\,\omega$$
+這就是一個 **PD 控制器**（比例作用在角度、微分作用在轉速），只是增益是「最佳化算出來的」，不是試出來的。
+
+**Step 6：閉迴路驗證**
+$$A - BK = \begin{bmatrix}0 & 1\\ -1 & -1.732\end{bmatrix}$$
+trace $= -1.732$、det $= 1$ → $\lambda^2 + 1.732\lambda + 1 = 0$ → $\lambda = -0.866 \pm 0.5j$，實部 $< 0$ → **穩定** ✓。原本 $\lambda = 0$ 的那個方向也被拉回來了。
+
+> ⚠️ **成本「看不到」就不會修**：如果改成只在意轉速 $Q = \begin{bmatrix}0 & 0\\ 0 & 1\end{bmatrix}$，解出 $K = [\,0\ \ 0.414\,]$——**角度完全不回授**，閉迴路特徵值是 $0, -1.414$，角度還是停在原地。原因是 $C = [\,0\ \ 1\,]$ 時 $(A, C)$ **不可偵測**（λ = 0 那個方向成本看不到，自己又不會衰減），不滿足 3.4.2 的條件。
+
+#### 3.4.5 另一種解法：Hamiltonian 矩陣（選讀，可以當驗算）
+
+把 $u = -R^{-1}B^T\lambda$ 代入狀態方程和共態方程，兩條合起來寫：
+$$\frac{d}{dt}\begin{bmatrix}x\\ \lambda\end{bmatrix} = \underbrace{\begin{bmatrix}A & -BR^{-1}B^T\\ -Q & -A^T\end{bmatrix}}_{\text{Hamiltonian 矩陣 } \mathcal H} \begin{bmatrix}x\\ \lambda\end{bmatrix}$$
+- $\mathcal H$ 的特徵值**成對出現**：有 $\mu$ 就有 $-\mu$
+- **穩定的那一半（實部 $< 0$）就是最佳閉迴路 $A - BK_\infty$ 的極點**
+- 把穩定特徵值的特徵向量寫成 $\begin{bmatrix}X\\ \Lambda\end{bmatrix}$，則 $S_\infty = \Lambda X^{-1}$（就是 $\lambda = Sx$ 的意思）
+
+**馬達一維驗算**：$\mathcal H = \begin{bmatrix}-1 & -1\\ -1 & 1\end{bmatrix}$，trace $= 0$、det $= -2$ → $\mu^2 - 2 = 0$ → $\mu = \pm 1.414$
+- 穩定的 $\mu = -1.414$ 正是 3.4.3 的閉迴路極點 ✓
+- 特徵向量：$(\mathcal H + 1.414 I)v = 0$ → $0.414\, v_1 - v_2 = 0$ → $v = [\,1,\ 0.414\,]^T$ → $S = 0.414 / 1 = 0.414$ ✓
+
+#### 3.4.6 偷懶版：有限時間也直接用常數 $K_\infty$
+
+有限時間 $T$ 的真正最佳解是時變的 $K(t)$（3.3.5 的表），但離終點遠時 $K(t) \approx K_\infty$，所以實務上常常**整段都直接用 $K_\infty$**（Lewis 叫 suboptimal feedback）。代價是快到終點那段不是最佳的，但實作簡單很多。
+
+任意固定增益 $K$ 的成本，都可以用 Lyapunov 型的方程算出來：
+$$-\dot S = (A - BK)^TS + S(A - BK) + K^TRK + Q$$
+穩態時就是 Żak Ch 4 的 Lyapunov 方程（把 $A$ 換成閉迴路 $A - BK$、把 $Q$ 換成 $Q + K^TRK$）。
+
+### 3.5 頻域結果（大致了解即可）
+
+**Chang-Letov 方程**：不用解 ARE，直接從轉移函數找最佳閉迴路極點。單輸入、$Q = qC^TC$ 時：
+$$\Delta_{cl}(s)\,\Delta_{cl}(-s) = \Delta(s)\,\Delta(-s) + \frac{q}{r}\, N(s)\, N(-s)$$
+- $\Delta(s) = \det(sI - A)$：開迴路特徵多項式
+- $N(s)$：開迴路轉移函數 $C(sI - A)^{-1}B$ 的分子
+- 右邊的根對稱於虛軸，**取左半平面那一半**就是最佳閉迴路極點
+
+**馬達驗算**：$\Delta(s) = s + 1$、$N(s) = 1$
+$$\Delta_{cl}(s)\,\Delta_{cl}(-s) = (1 + s)(1 - s) + \frac{q}{r} = 1 + \frac{q}{r} - s^2$$
+根是 $s = \pm\sqrt{1 + q/r}$，取左半平面 → $-\sqrt{1 + q/r}$，跟 3.4.3 一樣 ✓
+
+**根軌跡的意義**：$q/r$ 從 0 變到 $\infty$ 時，最佳極點從「開迴路極點（不穩定的會鏡射到左半平面）」移動到「開迴路零點（同樣鏡射）或無窮遠」。可以用來挑 $q/r$。
+
+### 3.6 第三章統整
+
+**Ch 2 ↔ Ch 3 公式對照（考試前看這張）：**
+
+| | 離散（Ch 2） | 連續（Ch 3） |
+|---|---|---|
+| Hamiltonian | $H^k = L + \lambda_{k+1}^T f$ | $H = L + \lambda^T f$ |
+| 狀態方程 | $x_{k+1} = f$ | $\dot x = f$ |
+| 共態方程 | $\lambda_k = \partial H^k/\partial x_k$ | $-\dot\lambda = \partial H/\partial x$ ⚠️**負號** |
+| 駐點條件 | $\partial H^k/\partial u_k = 0$ | $\partial H/\partial u = 0$ |
+| 終點自由 | $\lambda_N = \partial\phi/\partial x_N$ | $\lambda(T) = \partial\phi/\partial x(T)$ |
+| LQR 增益 | $K_k = (B^TS_{k+1}B + R)^{-1}B^TS_{k+1}A$ | $K = R^{-1}B^TS$ |
+| Riccati | $S_k = A^TS_{k+1}(A - BK_k) + Q$ | $-\dot S = A^TS + SA - SBR^{-1}B^TS + Q$ |
+| 穩態 | DARE | ARE：$0 = A^TS + SA - SBR^{-1}B^TS + Q$ |
+| 最佳成本 | $\tfrac12 x_0^TS_0x_0$ | $\tfrac12 x_0^TS(t_0)x_0$ |
+| 閉迴路穩定 | $\lvert\lambda(A - BK)\rvert < 1$ | $\text{Re}\,\lambda(A - BK) < 0$ |
+| 馬達 $K_\infty$ | 0.384（$\Delta t = 0.1$） | 0.414 |
+
+**一般問題 SOP（連續）：**
+1. 寫 $H = L + \lambda^T f$
+2. 三個條件：$\dot x = f$、$-\dot\lambda = \partial H/\partial x$、$\partial H/\partial u = 0$
+3. 用駐點條件把 $u$ 寫成 $\lambda$ 的函數
+4. 先解共態方程（常常跟 $x$ 無關），再解狀態方程，全部用未知的 $\lambda(T)$ 表示
+5. 查 3.2.4 的邊界條件表，解出 $\lambda(T)$
+
+**LQR SOP（連續）：**
+1. 寫 Riccati：$-\dot S = A^TS + SA - SBR^{-1}B^TS + Q$，$S(T)$ 給定
+2. 要穩態就令 $\dot S = 0$ 解 ARE，**取正定解**（2×2 時從最簡單的元素開始解）
+3. $K = R^{-1}B^TS$，$u^* = -Kx$
+4. 驗算：$A - BK$ 的特徵值實部都 $< 0$
+
+**關鍵觀念：**
+- **連續 = 離散的 $\Delta t \to 0$**：負號、較簡單的 $K$ 都是取極限的結果，不用另外背
+- **負號的意義**：$\lambda$ 是「剩下的成本」的斜率，時間往前走，剩下的越來越少
+- **終點成本 = 終點固定的軟性版**：3.2.7 的 $s$ 表和 2.1.1 的 $s$ 表是同一個故事
+- **ARE 有多個解**：取正定的那個；需要 stabilizable + detectable 才保證閉迴路穩定
+- **LQR 只跟 $Q : R$ 的比例有關**
+
+**什麼時候用哪一套？** 跟 2.3 的表一樣：線性 + 二次成本 + 終點自由 → LQR（Riccati）；終點固定（例 3.2.7a）、非線性、非二次成本 → 一般 SOP；$u$ 有上下限 → Żak Ch 5 的 PMP；$T$ 自由 → 一般 SOP 再加 $H(T) = 0$。
 
 ---
 
@@ -1309,19 +1631,20 @@ $$u^*(t) = -\text{sign}(p_2(t)) = -\text{sign}(-c_1 t + c_2)$$
 
 ---
 
-## 九、五種語言，同一個真理
+## 九、多種語言，同一個真理
 
-考試最愛考「殊途同歸」。以下五個路徑都導向 LQR 的 ARE：
+考試最愛考「殊途同歸」。以下這些路徑都導向 LQR 的 Riccati / ARE：
 
 | 路徑 | 核心方程 | 誰的 |
 |---|---|---|
-| 變分法 / TPBVP | 微分 Riccati | Lewis Ch 3 |
+| 三條件 + 猜 $\lambda_k = S_k x_k$（sweep method），離散 | Riccati 差分方程 → DARE | Lewis Ch 2（§2.2.2） |
+| 三條件 + 猜 $\lambda = Sx$（sweep method），連續 | 微分 Riccati → ARE | Lewis Ch 3（§3.3.2） |
 | HJB / quadratic ansatz | HJB → Riccati | Lewis Ch 6 |
 | Lyapunov + 最佳化 | Lyapunov 方程改造 | Żak Ch 5 |
 | MDP Bellman optimality | 離散 ARE for LQR | Lewis Ch 11 |
 | Pontryagin | 對 $u$ 微分為零得到 $u^* = -R^{-1}B^T p$ | Żak Ch 5 |
 
-**都得到 $u^* = -R^{-1} B^T P x = -K x$，其中 $P$ 由 ARE 決定。**
+**連續版都得到 $u^* = -R^{-1} B^T P x = -K x$，其中 $P$ 由 ARE 決定。** 離散版（Ch 2、Ch 11）是 $K = (B^TPB + R)^{-1}B^TPA$，取 $\Delta t \to 0$ 就變回連續版（§3.3.3）。
 
 ---
 

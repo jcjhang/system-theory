@@ -1593,78 +1593,216 @@ $$-\dot\lambda = \frac{\partial H}{\partial x}$$
 
 ## 五、Lewis Ch 11：強化學習 & 適應性最佳控制
 
-### 大意
+### 大意：為什麼又要換方法？
 
-**前面所有章節**都要**事先知道 $A, B$**（系統動態）才能算 Riccati。但現實中你可能不知道！
+Ch 2、3、6 的方法都有同一個前提：**事先知道模型 $A, B$**，然後在辦公室裡**倒著**算好（離線）。但真實的馬達：
+- 摩擦係數 $a$ 你不一定知道，而且會隨溫度、磨損改變
+- 系統跑的時候時間只會往前，不能先跑到終點再回來
 
-**這章的問題**：能不能**邊做邊學**，讓控制自己收斂到最佳？答案是「可以」——這就是強化學習 (Reinforcement Learning, RL)。
+**這章要做的**：不用模型、順著時間、**邊跑邊學**，最後學到跟 Riccati 一樣的最佳控制。這就是**強化學習 (RL)**。
 
-### 11.1 Actor-Critic 架構
+**GPS 比喻（接 Ch 6）**：DP 是拿著地圖在辦公室算好每個路口的牌子；RL 是**沒有地圖的計程車司機**，每天實際開車，慢慢把牌子修準。
 
-- **Actor**（演員）：實際下控制 $u$
-- **Critic**（評論家）：告訴你「這個策略有多好」
+**RL 名詞 ↔ 前面的名詞**（同一個東西換了名字）：
 
-Actor 依 Critic 的評分改進，兩者輪流疊代。
+| RL | 前面章節 |
+|---|---|
+| 動作 action | 控制 $u$ |
+| 策略 policy $u = h(x)$ | 回授控制律 |
+| 成本 $r_k$ | 每一步的成本 $L$ |
+| 價值函數 $V(x)$ | Ch 6 的 cost-to-go $J^*$；LQR 的 $\tfrac12 x^TPx$ |
 
-### 11.2 Markov Decision Process (MDP)
+### 11.1 Bellman 方程：無限時間版的 Ch 6
 
-RL 的數學框架。要件：
-- 狀態空間 $X$、動作空間 $U$
-- **轉移機率** $P_{x,x'}^u$：在狀態 $x$ 選動作 $u$，跳到 $x'$ 的機率
-- **獎勵/成本** $R_{x,x'}^u$：這個轉移要付的代價
+#### 11.1.1 Value function 和折扣 $\gamma$
 
-**Value function**（給定策略 $\pi$）：
-$$V^\pi(x) = \mathbb E_\pi\Big[\sum \gamma^i r_i \,\Big|\, x_k = x\Big]$$
-- 「從狀態 $x$ 開始，用策略 $\pi$，總體期望成本是多少」
-- $\gamma$：折扣因子，未來的成本打點折
+$$V(x_k) = r_k + \gamma\, r_{k+1} + \gamma^2 r_{k+2} + \cdots$$
+「從 $x_k$ 出發、照策略一直做下去，總共付多少」。
+- RL 的系統通常**沒有終點**，成本加到無窮多項。乘上 $\gamma$（$0 < \gamma \le 1$）讓越遠的未來越不重要，總和才不會變無窮大
+- LQR 可以取 $\gamma = 1$：只要閉迴路穩定，$x \to 0$，成本自然有限
 
-**Bellman 方程**（一致性條件）：
-$$V^\pi(x) = \sum_u \pi(x, u) \sum_{x'} P_{x,x'}^u [R + \gamma V^\pi(x')]$$
+（如果系統有隨機性，就對所有可能的下一步取平均。這種「有機率的離散系統」叫 **MDP (Markov Decision Process)**，前面的 $x_{k+1} = f(x_k, u_k)$ 就是機率為 1 的特例。）
 
-**Bellman optimality**（就是離散版 HJB）：
-$$V^*(x) = \min_u \sum_{x'} P_{x,x'}^u [R + \gamma V^*(x')]$$
+#### 11.1.2 兩條 Bellman 方程
 
-**對 LQR 來說**：
-- 用固定策略 $u = -Kx$ → Bellman = **Lyapunov 方程** $(A-BK)^T P (A-BK) - P + Q + K^T R K = 0$
-- 最佳策略 → Bellman optimality = **離散 ARE** $A^T P A - P + Q - A^T P B (B^T P B + R)^{-1} B^T P A = 0$
+把無窮和拆成「這一步 + 剩下的」：
 
-**結論：Ch 4 的 Lyapunov、Ch 3 的 ARE、Ch 6 的 HJB、Ch 11 的 Bellman，全部連在一起。**
+| 名稱 | 方程 | 用途 |
+|---|---|---|
+| **Bellman 方程** | $V^h(x_k) = r_k + \gamma\,V^h(x_{k+1})$ | 給一個策略**評分** |
+| **Bellman 最佳性方程** | $V^*(x) = \min_u\big[r(x, u) + \gamma\,V^*(x')\big]$ | 找**最佳**策略 |
 
-### 11.3 Policy Iteration (PI) & Value Iteration (VI)
+第二條**就是 Ch 6 的 Bellman 方程**。差別只有一個：
 
-兩種找最佳策略的疊代方法：
+| | Ch 6（有限時間） | Ch 11（無限時間） |
+|---|---|---|
+| 方程 | $J_k^* = \min[L + J_{k+1}^*]$ | $V^* = \min[r + \gamma V^*]$ |
+| 等號兩邊 | 不同函數（$J_k$、$J_{k+1}$） | **同一個** $V^*$ |
+| 怎麼解 | 從終點一路逆推 | 沒有終點可以起算 → **反覆疊代**直到不變（11.2） |
 
-**Policy Iteration**：
-1. 給定策略 $\pi$，**算它的 value**（解 Bellman 一致性方程）
-2. **改進策略**：對每個 state 選 greedy 動作
-3. 重複直到不變
+#### 11.1.3 例子：雙速馬達
 
-**Value Iteration**：不完整解 Bellman，只做一步 update
-$$V_{j+1}(x) = \min_u \sum P^u[R + \gamma V_j(x')]$$
+把轉速粗分成**低速 L**、**高速 H**，每步選**省電 0** 或**加電 1**，$\gamma = 0.9$：
 
-VI 每步比較輕，但需要更多次疊代才收斂。
+| 現在 | 動作 | 下一步 | 成本 |
+|---|---|---|---|
+| L | 0 | L | 2（低速要付 2） |
+| L | 1 | H（80%）、L（20%） | 3（低速 2 + 電費 1） |
+| H | 0 | L（50%）、H（50%） | 0 |
+| H | 1 | H | 1（電費） |
 
-### Q Function：不需要模型也能學
+**評估「永遠省電」**——每個狀態寫一條 Bellman 方程：
+$$V(L) = 2 + 0.9\,V(L) \;\Rightarrow\; V(L) = 20$$
+$$V(H) = 0 + 0.9\,[\,0.5\,V(L) + 0.5\,V(H)\,] \;\Rightarrow\; V(H) \approx 16.36$$
+有幾個狀態，就有幾條聯立線性方程。
 
-Value function 是「這個狀態多好」，Q function 是「這個狀態選這個動作多好」：
-$$Q^\pi(x, u) = \sum_{x'} P^u[R^u + \gamma V^\pi(x')]$$
+#### 11.1.4 LQR 的 Bellman 方程就是 Lyapunov 方程
 
-**Q function 的神奇之處**：
-- 有了 $Q^*$，最佳動作就是 $u^* = \arg\min_u Q^*(x, u)$
-- **不需要知道 $P$（系統動態）**！因為 Q 已經把它包進去了
+馬達 $\omega_{k+1} = 0.9\,\omega_k + 0.1\,u_k$，策略 $u = -K\omega$，$V = \tfrac12 p\,\omega^2$，代入 Bellman 方程：
+$$p\,\omega_k^2 = (1 + K^2)\,\omega_k^2 + p\,(0.9 - 0.1K)^2\,\omega_k^2 \;\Rightarrow\; p = \frac{1 + K^2}{1 - (0.9 - 0.1K)^2}$$
+例：$K = 0$ → $p = 1/0.19 = 5.263$。矩陣版：
+$$(A - BK)^TP(A - BK) - P + Q + K^TRK = 0$$
+- 這就是 **Żak Ch 4 的離散 Lyapunov 方程**（$A$ 換成 $A - BK$）——Lyapunov 方程原來是在幫控制器「評分」
+- 最佳性方程則變成 **2.2.5 的 DARE**
 
-**DT LQR 的 Q function**：
-$$Q(x, u) = \tfrac{1}{2}\begin{bmatrix}x\\u\end{bmatrix}^T \underbrace{\begin{bmatrix}A^T P A + Q & A^T P B\\ B^T P A & B^T P B + R\end{bmatrix}}_{\text{叫它 }S} \begin{bmatrix}x\\u\end{bmatrix}$$
+### 11.2 怎麼解：Policy Iteration 與 Value Iteration
 
-從 $S$ 矩陣的兩個 block ($S_{uu}, S_{ux}$) 可以直接讀出 $K = S_{uu}^{-1} S_{ux}$——**不需要 $A, B$**！
+兩個基本動作：
+- **評分 (policy evaluation)**：算出目前策略的 $V$
+- **改進 (policy improvement)**：每個狀態改選讓「$r + \gamma V(x')$」最小的動作
 
-**馬達例子**：假設不知道馬達的 $a$（摩擦係數）。用 Q-learning：
-1. 隨機下電壓 $u_k$
-2. 觀察 $\omega_k \to \omega_{k+1}$ 和實際 cost
-3. 用資料更新 Q function 的參數
-4. 慢慢收斂到最佳 $K$
+（RL 裡負責評分的叫 **critic**，負責下控制、改策略的叫 **actor**。）
 
-**最終結果和「知道 $a$ 直接解 Riccati」一樣好，但不需要模型。**
+⚠️ 下面的 $j$ 是**第幾輪疊代**，不是時間。
+
+#### 11.2.1 Policy Iteration (PI)：評分做完整，再改進
+
+**雙速馬達**：
+- **第 0 輪**：「永遠省電」的評分是 $V(L) = 20$、$V(H) = 16.36$。改進時比較：
+  - L：省電 $2 + 0.9 \times 20 = 20$；加電 $3 + 0.9(0.8 \times 16.36 + 0.2 \times 20) = 18.38$ → **加電**
+  - H：省電 $0.9(0.5 \times 20 + 0.5 \times 16.36) = 16.36$；加電 $1 + 0.9 \times 16.36 = 15.73$ → **加電**
+- **第 1 輪**：「永遠加電」的評分是 $V(H) = 1 + 0.9\,V(H) = 10$、$V(L) = 12.44$。再改進，策略不變 → **結束**
+
+**兩輪就找到最佳策略：永遠加電。**
+
+#### 11.2.2 Value Iteration (VI)：評分只代入一次
+
+不解聯立方程，直接重複：
+$$V_{j+1}(x) = \min_u\big[r(x, u) + \gamma\,V_j(x')\big]$$
+雙速馬達從 $V_0 = 0$ 開始：$V(L)$ = 2.0 → 3.36 → 4.25 → … → 第 60 輪 12.42，慢慢爬到 12.44。策略在第 3 輪就對了，之後只是把數字算準。
+
+#### 11.2.3 重點：Ch 2 的 Riccati 就是 VI
+
+LQR 的 VI 寫出來是：
+$$K_j = (B^TP_jB + R)^{-1}B^TP_jA, \qquad P_{j+1} = (A - BK_j)^TP_j(A - BK_j) + Q + K_j^TRK_j$$
+這跟 6.2.4 的 Riccati **一模一樣**，只是「時間 $k$」換成「疊代 $j$」。馬達從 $P_0 = 0$ 開始：
+
+| 疊代 $j$ | 1 | 2 | 3 | 5 | 10 | 20 | 30 |
+|---|---|---|---|---|---|---|---|
+| $K$ | 0 | 0.089 | 0.159 | 0.256 | 0.354 | 0.382 | 0.384 |
+
+**跟 2.2.5 那張「剩幾步」的表完全相同。** Ch 2 逆推 Riccati 看增益收斂，其實就是在做 VI。
+
+LQR 的 **PI** 叫 **Hewer 演算法**：反覆「解 Lyapunov 方程 → 更新 $K$」。馬達 $K$：0 → 0.45 → 0.385 → **0.384**，3 輪就收斂。
+
+#### 11.2.4 PI vs VI
+
+| | PI | VI |
+|---|---|---|
+| 每輪做什麼 | 完整解 Bellman 方程（LQR：解 Lyapunov） | 只代入一次 |
+| 收斂 | **快**（馬達 3 輪） | 慢（馬達 30 輪） |
+| 起點 | ⚠️ 必須讓系統**穩定**，否則評分算出負的、無意義的成本 | **任意** |
+
+### 11.3 Q 函數：選動作不需要模型
+
+$$Q(x, u) = r(x, u) + \gamma\,V(x') \qquad\Rightarrow\qquad V(x) = \min_u Q(x, u)$$
+「在 $x$ **先做 $u$**，之後照策略走，總共付多少」。**你其實已經算過了**：6.2.3 表格的「候選 $u$：成本」、11.2.1 的「L 省電 20、加電 18.38」都是 Q 值。
+
+**雙速馬達的最佳 Q 表**：
+
+| | 省電 | 加電 |
+|---|---|---|
+| L | 13.20 | **12.44** |
+| H | 10.10 | **10.00** |
+
+**為什麼要多存一個 $u$？**
+- 用 $V$ 選動作：$\arg\min_u[r + \gamma V(f(x, u))]$ → 要知道 **$f$**，才知道 $u$ 會讓狀態跑去哪
+- 用 $Q$ 選動作：$\arg\min_u Q(x, u)$ → **直接查表比大小，不需要模型**
+
+**LQR 的 Q 函數**是 $[x;\ u]$ 的二次式，矩陣 $G = \begin{bmatrix}G_{xx} & G_{xu}\\ G_{ux} & G_{uu}\end{bmatrix} = \begin{bmatrix}A^TPA + Q & A^TPB\\ B^TPA & B^TPB + R\end{bmatrix}$，對 $u$ 取最小得
+$$K = G_{uu}^{-1}G_{ux}$$
+只要知道 $G$ 就能算 $K$，**不必知道 $A$、$B$**。（課本把 $G$ 叫 $S$，這裡改名避免跟 Ch 2 的 $S_k$ 混淆。）
+
+### 11.4 用資料取代模型：TD 與 Q-learning
+
+#### 11.4.1 關鍵想法
+
+Bellman 方程 $V(x_k) = r_k + \gamma V(x_{k+1})$ 裡面只有 $x_k$、$r_k$、$x_{k+1}$。DP 要用模型**算出** $x_{k+1}$；RL 改成**讓系統真的走一步，直接量**。
+
+如果 $V$ 還不準，兩邊會差一點，這個差叫 **TD 誤差 (temporal difference)**：
+$$e_k = \underbrace{r_k + \gamma\,\hat V(x_{k+1})}_{\text{走一步後的新估計}} - \underbrace{\hat V(x_k)}_{\text{原本的估計}}$$
+不斷把它修到 0，$\hat V$ 就會變準。
+
+#### 11.4.2 例子：不知道 0.9，也能算出成本
+
+想知道「不控制」的成本 $p$，但不知道馬達參數。讓它跑一步：$\omega_0 = 10$、$u_0 = 0$，**量到** $\omega_1 = 9$。代入 Bellman 方程：
+$$p\,(10^2 - 9^2) = 10^2 \;\Rightarrow\; p = 5.263$$
+**跟 11.1.4 用模型算的一樣**，全程沒用到 0.9。多維時未知數是 $P$ 的元素，收集多組資料用**最小平方法**解。
+
+#### 11.4.3 Q-learning
+
+用同樣的方法學 Q 函數的 $G$ 矩陣，再用 $K = G_{uu}^{-1}G_{ux}$ 改進策略，**$A$、$B$ 都不需要**。馬達例子：量三組資料就學到 $K = 0.45$，跟 11.2.3 用模型做 PI 第一輪的結果一樣；重複下去收斂到 0.384。
+
+> ⚠️ **學習時要探索**：如果每次都照策略做（例如永遠 $u = 0$），你沒試過加電，資料裡就看不出加電的效果，$G_{xu}, G_{uu}$ 永遠解不出來。所以要在控制裡加一點**探索雜訊**（課本稱 persistent excitation）。
+
+#### 11.4.4 狀態太多怎麼辦？
+
+連續狀態沒辦法用表格存 $V$（6.5 維度詛咒）。改用 $V(x) \approx W^T\phi(x)$，只學幾個權重 $W$。LQR 時 $\phi$ 就是二次項、$W$ 就是 $P$ 的元素；非線性時可以用神經網路。這叫**近似動態規劃 (ADP)**。
+
+### 11.5 連續時間：Integral RL（大致了解）
+
+連續時間的 Bellman 方程是 $0 = r + (\partial V/\partial x)^T f$，裡面有 $f$，又要模型了。
+
+**解法**：不取 $\Delta t \to 0$（6.3.2 推 HJB 時取了極限），改成保留一段時間 $T$：
+$$V(x(t)) = \int_t^{t+T} r\,d\tau + V(x(t+T))$$
+形式跟離散 Bellman 方程一樣，**不含 $f$**，量得到就能學。改進策略 $u = -R^{-1}B^TPx$ 只需要 $B$。
+
+LQR 時的 PI 叫 **Kleinman 演算法**（Hewer 的連續版）。連續馬達 $K$：0 → 0.5 → 0.417 → **0.414**，就是 3.4.3 的 $\sqrt2 - 1$。
+
+（11.7 的「同步」版本把 critic、actor 同時調整，但需要完整模型，大致了解即可。）
+
+### 11.6 第十一章統整
+
+**一句話**：RL 跟前面解的是**同一個 Bellman 方程**，差別只在 $x_{k+1}$ 怎麼來——用模型算（DP、Riccati），或實際去量（RL）。
+
+**同一個馬達 LQR，四種算法、同一個答案 $K = 0.384$：**
+
+| 方法 | 需要什麼 | 收斂 |
+|---|---|---|
+| Ch 2 Riccati 逆推 = **VI** | $A, B$ | 約 30 步 |
+| **PI**（Hewer，反覆解 Lyapunov） | $A, B$ + 穩定的起點 | 3 輪 |
+| DARE 直接解 | $A, B$ | 一次 |
+| **Q-learning** | **只要資料** | 跟 PI 一樣的每一輪 |
+
+**跟前面章節的連結：**
+
+| Ch 11 | 等於前面的 |
+|---|---|
+| $V(x)$ | Ch 6 的 $J^*$、LQR 的 $\tfrac12 x^TPx$ |
+| Bellman 最佳性方程 | Ch 6 Bellman 方程（無限時間） |
+| LQR 的 Bellman 方程 | Żak Ch 4 離散 Lyapunov 方程 |
+| VI | Ch 2 Riccati 逆推（2.2.5 的表） |
+| Q 函數 | Ch 6 Bellman 方程 $\min$ 裡面的東西 |
+
+**什麼時候用？** 知道模型 → 直接算（Ch 2、3、6）；不知道模型或系統會變 → 邊跑邊學（Ch 11）。
+
+**可能的考題：**
+1. 給小 MDP，寫 Bellman 方程、解出某個策略的 $V$
+2. 做一兩輪 PI / VI
+3. 說明 LQR 的 Bellman 方程 = Lyapunov、最佳性方程 = DARE
+4. 從 LQR 的 Q 矩陣算 $K$
+5. 解釋 TD、Q-learning 為什麼不需要模型、為什麼要探索
+6. 比較 PI 和 VI
 
 ---
 
@@ -1937,7 +2075,7 @@ $$u^*(t) = -\text{sign}(p_2(t)) = -\text{sign}(-c_1 t + c_2)$$
 | 三條件 + 猜 $\lambda = Sx$（sweep method），連續 | 微分 Riccati → ARE | Lewis Ch 3（§3.3.2） |
 | HJB / quadratic ansatz | HJB → Riccati | Lewis Ch 6 |
 | Lyapunov + 最佳化 | Lyapunov 方程改造 | Żak Ch 5 |
-| MDP Bellman optimality | 離散 ARE for LQR | Lewis Ch 11 |
+| MDP Bellman 最佳性方程，用 VI / PI（Hewer）/ Q-learning 求解 | 離散 ARE；VI 的數字跟 Ch 2 逆推完全一樣，Q-learning 不需要 $A, B$ | Lewis Ch 11（§11.1.4、11.2.3、11.4.3） |
 | Pontryagin | 對 $u$ 微分為零得到 $u^* = -R^{-1}B^T p$ | Żak Ch 5 |
 
 **連續版都得到 $u^* = -R^{-1} B^T P x = -K x$，其中 $P$ 由 ARE 決定。** 離散版（Ch 2、Ch 11）是 $K = (B^TPB + R)^{-1}B^TPA$，取 $\Delta t \to 0$ 就變回連續版（§3.3.3）。

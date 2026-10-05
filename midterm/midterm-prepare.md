@@ -6,6 +6,18 @@
 - Lewis《Optimal Control》Ch 1, 2, 3, 6, 11
 - Żak《Systems and Control》Ch 3, 4, 5
 
+**2024 考古題**（`mid-2024.pdf`，當年是 open-book；今年是 closed-book）：
+
+| 題 | 考什麼 | 章 | 配分 | 筆記 |
+|---|---|---|---|---|
+| 1 | 面積固定、周長最小的長方形（Lagrange）+ 畫等高線 | Lewis Ch 1 | 15% | §1.2 |
+| 2 | 雙線性系統的三個條件、消去 $u_k$ | Lewis Ch 2 | 15% | §2.1.5 |
+| 3 | $\dot x = u$ 的閉迴路（有限時間 Riccati）/ 開迴路（終點固定） | Lewis Ch 3 | 20% | §3.3.6、§3.2.7 |
+| 4 | 飛機航線的**最大**油耗（DP） | Lewis Ch 6 | 15% | §6.1.1 |
+| 5 | 是非題：DP vs RL、PI/VI、Q 函數、TD，以及「證明 LQR 的 Bellman 方程 = Lyapunov、最佳性方程 = DARE」 | Lewis Ch 11 | 35% | §11 各節、§11.6 是非題整理 |
+
+2024 年**沒考 Żak**，但今年範圍有列，不能跳過。筆記中標 **📝 2024 考過** 的地方，就是當年考過的觀念。
+
 ---
 
 ## 開始之前：這門課在做什麼？
@@ -482,6 +494,39 @@ $$L^*(c) = \frac{(10 + c)^2}{4}$$
 - 這個例子的約束很簡單，可以直接解出 $\omega = u$。但很多約束解不出來（例如非線性），Lagrange 不需要先解約束
 - 到了 Ch 2、Ch 3，**每一個時間點**都有一條約束（狀態方程 $x_{k+1} = f(x_k, u_k)$），根本不可能一一代入。這時每個時間點配一個 $\lambda_k$，就是 **costate**，而三兄弟就變成 Ch 2 那張「狀態方程、共態方程、駐點條件」的表
 
+**例子：周長最小的長方形**
+
+> 📝 **2024 考過**（第 1 題，15%）：A. 面積 $a^2$ 的長方形中，周長最小的是哪一個？B. 畫出 $L$ 的等高線和約束。
+
+最小化 $L(x, y) = 2x + 2y$，約束 $f(x, y) = xy - a^2 = 0$（$x$、$y$ 是長和寬，兩個都是要選的變數）。
+
+**A. 照 SOP 解：**
+1. $H = 2x + 2y + \lambda(xy - a^2)$
+2. 三兄弟：$H_x = 2 + \lambda y = 0$、$H_y = 2 + \lambda x = 0$、$H_\lambda = xy - a^2 = 0$
+3. 前兩條相減：$\lambda(y - x) = 0$。$\lambda$ 不可能是 0（否則 $2 = 0$），所以 $x = y$；代入約束得 $x = y = a$（長度取正），$\lambda^* = -2/a$
+4. **答案：正方形**，周長 $L^* = 4a$
+
+- **確認是最小**：沿著約束 $y = a^2/x$，$L = 2x + 2a^2/x$，$L'' = 4a^2/x^3 > 0$ ✓
+- **$\lambda$ 是價格**：面積是 $c = a^2$ 時 $L^* = 4\sqrt c$，$dL^*/dc = 2/\sqrt c = 2/a = -\lambda^*$ ✓（跟上面馬達例子同一個關係）
+
+**B. 怎麼畫：**
+1. **等高線** $L = $ 常數 → $x + y = L/2$：一族**斜率 −1 的平行直線**，越往右上 $L$ 越大。畫 $L = 2a, 4a, 6a$ 三條
+2. **約束** $xy = a^2$：一條**雙曲線**，經過 $(a/2, 2a)$、$(a, a)$、$(2a, a/2)$
+3. **最佳點**：等高線從左下往右上推，**第一條碰到雙曲線的**就是最小值 $L = 4a$，兩者在 $(a, a)$ **相切**
+4. **標出梯度**：$\nabla L = (2, 2)$、$\nabla f = (y, x) = (a, a)$，在切點**平行**，這正是上面「幾何直覺」說的 $\nabla L = -\lambda\nabla f$（$\lambda = -2/a$）
+
+```
+ y        示意圖
+2a ┤╲ ·              ·  約束 xy = a²（雙曲線）
+   │ ╲ ·             ╲  等高線 x + y = 2a（L = 4a）
+   │  ╲  ·           ●  (a, a)：相切點 = 最小值
+ a ┤   ╲  ●
+   │    ╲   ·
+   │     ╲     ·   ·   ·
+   └──────┼──────┼──────── x
+          a      2a
+```
+
 ### 1.3 第一章統整
 
 **兩種問題、兩套做法：**
@@ -705,6 +750,38 @@ $$\boxed{u_0^* = -\frac{0.09}{1.01}\,\omega_0 \approx -0.0891\,\omega_0, \qquad 
 $$J^* = \tfrac12(10^2 + 0.891^2 + 8.911^2 + 0^2) \approx 90.1$$
 
 **$\lambda$ 的意義又出現了**：$\lambda_1 = \omega_1$，意思是「$\omega_1$ 多一單位，剩下的成本多 $\omega_1$」——剛好就是 $\tfrac12\omega_1^2$ 的斜率。$\lambda_k$ 就是「第 $k$ 步狀態的價格」。
+
+#### 2.1.5 向量、非線性的例子：雙線性系統
+
+> 📝 **2024 考過**（第 2 題，15%）：A. 求最佳控制（bilinear state–costate feedback）；B. 消去 $u_k$ 之後的狀態、共態方程。
+
+**問題**：$x_{k+1} = Ax_k + Dx_ku_k + bu_k$（$x_k \in \mathbb R^n$，$u_k$ 是**純量**），
+$$J = \tfrac12 x_N^TS_Nx_N + \tfrac12\sum_{k=0}^{N-1}(x_k^TQx_k + ru_k^2)$$
+「雙線性」= 有 $x_k u_k$ 相乘的項 → **不是線性系統** → 不能直接套 LQR，要回到 2.1.2 的一般 SOP（見 2.3 的表）。
+
+**小技巧**：把後兩項合併成 $(Dx_k + b)\,u_k$。
+
+**Step 1：Hamiltonian**
+$$H^k = \tfrac12(x_k^TQx_k + ru_k^2) + \lambda_{k+1}^T(Ax_k + Dx_ku_k + bu_k)$$
+
+**Step 2：駐點條件（A 小題）**——對**純量** $u_k$ 微分，$\lambda_{k+1}^T(Dx_k + b)\,u_k$ 的微分就是 $\lambda_{k+1}^T(Dx_k + b)$（一個數字）：
+$$0 = ru_k + \lambda_{k+1}^T(Dx_k + b) \;\Rightarrow\; \boxed{u_k = -\tfrac1r\,(Dx_k + b)^T\lambda_{k+1}}$$
+（純量轉置後不變，所以 $\lambda^T g = g^T\lambda$。）式子裡 $x_k$ 和 $\lambda_{k+1}$ **相乘**，所以叫 **bilinear state–costate feedback**。
+
+**Step 3：共態方程**——對 $x_k$ 微分，$u_k$ 當常數：
+- $\tfrac12 x_k^TQx_k \to Qx_k$
+- $\lambda_{k+1}^TAx_k \to A^T\lambda_{k+1}$
+- $\lambda_{k+1}^TDx_k\,u_k \to u_kD^T\lambda_{k+1}$
+
+$$\lambda_k = Qx_k + (A + u_kD)^T\lambda_{k+1}, \qquad x_{k+1} = (A + u_kD)\,x_k + bu_k$$
+
+**Step 4：消去 $u_k$（B 小題）**——把 Step 2 代進去：
+$$x_{k+1} = Ax_k - \tfrac1r\,(Dx_k + b)(Dx_k + b)^T\lambda_{k+1}$$
+$$\lambda_k = Qx_k + A^T\lambda_{k+1} - \tfrac1r\,D^T\lambda_{k+1}\,\lambda_{k+1}^T(Dx_k + b)$$
+邊界：$x_0$ 給定，$\lambda_N = S_Nx_N$。
+
+- **驗算**：令 $D = 0$，變回 LQR 的狀態、共態方程 $x_{k+1} = Ax_k - \tfrac1r bb^T\lambda_{k+1}$、$\lambda_k = Qx_k + A^T\lambda_{k+1}$ ✓
+- 這是**非線性**的兩點邊值問題（有 $\lambda\lambda^T x$ 這種乘積），猜 $\lambda_k = S_kx_k$ 不再成立，題目只要求寫到這裡
 
 ### 2.2 離散 LQR：本章最重要
 
@@ -990,6 +1067,13 @@ $$\frac{dH}{dt} = \frac{\partial H}{\partial t} + \underbrace{\frac{\partial H}{
 
 這題跟課本 Ex 3.2-3（用最少能量加熱房間）的數學**一模一樣**，只是把溫度換成轉速。考試很可能出這種題型。
 
+> 📝 **2024 考過**（第 3B 題，10%）：同型但更簡單——$\dot x = u$（沒有摩擦）、$J = \tfrac12\int_{t_0}^T ru^2\,dt$、終點固定 $x(T)$，求開迴路控制。
+> - $H = \tfrac12 ru^2 + \lambda u$
+> - 共態：$-\dot\lambda = \partial H/\partial x = 0$ → $\lambda$ 是**常數**
+> - 駐點：$ru + \lambda = 0$ → $u = -\lambda/r$ 也是**常數**
+> - 所以 $x(t) = x(t_0) + u\,(t - t_0)$，代入終點：$\boxed{u^* = \dfrac{x(T) - x(t_0)}{T - t_0}}$（等速前進），$J^* = \dfrac{r\,(x(T) - x(t_0))^2}{2(T - t_0)}$
+> - 對照下面的馬達：有摩擦時越晚加電越划算（$u \propto e^t$）；沒摩擦時早加晚加都一樣，所以電壓固定
+
 **問題**：馬達從靜止 $\omega(0) = 0$ 出發，要在 $T = 1$ 秒時達到 $\omega_{\text{ref}} = 10$，而且**最省電**：
 $$\dot\omega = -\omega + u, \qquad J = \tfrac12 \int_0^1 u^2\, dt$$
 （成本只算電，不算轉速——這裡轉速是「目標」，不是「懲罰」。跟 Ch 2 的例子不同。）
@@ -1080,7 +1164,7 @@ $$K = (\Delta t^2\, B^TSB + \Delta t\, R)^{-1}\, \Delta t\, B^TS(I + A\Delta t) 
 - **實作技巧**（Lewis 3.3）：令 $\tau = T - t$（「剩下多少時間」），方程變成
 $$\frac{dS}{d\tau} = A^TS + SA - SBR^{-1}B^TS + Q, \qquad S\big\rvert_{\tau = 0} = S(T)$$
   負號不見了，從 $\tau = 0$ 順著積分就好，一般的 ODE 求解器都能用
-- 純量 (scalar) 情況可以用分離變數得到解析解（Lewis Ex 3.3-4），但考試多半只要求**寫出方程**或**求穩態解**（3.4）
+- 純量 (scalar) 情況可以用**分離變數**解出 $S(t)$，**2024 考過**，步驟見 3.3.6
 
 #### 3.3.5 馬達例子：連續版的 2.2.4 / 2.2.5
 
@@ -1103,6 +1187,30 @@ $$-\dot s = -2s - s^2 + 1, \qquad s(T) = 0, \qquad K = s$$
 2. **$\Delta t$ 越小，離散越接近連續**。Ch 2 的 $K_\infty = 0.384$ 跟連續的 $0.414$ 差一點，是因為 0.1 秒的格子還不夠細
 3. **$S$ 也一樣**：Ch 2 的 $S_\infty = 4.45$ 乘上 $\Delta t = 0.1$ 得 $0.445$，跟連續的 $0.414$ 很接近（$\Delta t = 0.01$ 時是 $0.417$）
 4. **終點權重不影響長期增益**：改成 $S(T) = 10$，$s$ 從 10 一路降到 $\tau = 1$ 時的 0.55、$\tau = 2$ 時的 0.42、$\tau = 3$ 時的 0.415——還是收斂到 0.414（同 2.2.5「$S_N$ 選不同值，最後都收斂到同一個 $K_\infty$」）
+
+#### 3.3.6 手解有限時間 Riccati：$\dot x = u$
+
+> 📝 **2024 考過**（第 3A 題，10%）：「Find a closed-loop control minimizing $J$」。題目把終點權重寫成 $\tfrac12 s\,x^2(t_0)$，應該是 $x^2(T)$ 的筆誤（$x(t_0)$ 是給定的，權重放在它身上不會影響最佳控制）。
+
+**問題**：$\dot x = u$，$J = \tfrac12 s\,x^2(T) + \tfrac12\int_{t_0}^T ru^2\,dt$。對照 LQR：$A = 0$、$B = 1$、$Q = 0$、$R = r$、$S(T) = s$。
+
+**Step 1：寫 Riccati**
+$$-\dot S = 0 + 0 - S\cdot\tfrac1r\cdot S + 0 \;\Rightarrow\; \dot S = \frac{S^2}{r}, \qquad S(T) = s$$
+
+**Step 2：分離變數**——$S$ 放一邊、$t$ 放一邊，從 $t$ 積到 $T$：
+$$\int_{S(t)}^{s}\frac{dS}{S^2} = \int_t^T\frac{d\tau}{r} \;\Rightarrow\; \frac{1}{S(t)} - \frac1s = \frac{T - t}{r}$$
+$$\boxed{S(t) = \frac{s\,r}{r + s\,(T - t)}}$$
+（驗算：$t = T$ 時 $S = s$ ✓）
+
+**Step 3：增益和控制**
+$$K(t) = R^{-1}B^TS = \frac{S(t)}{r} = \frac{s}{r + s\,(T - t)}, \qquad \boxed{u^*(t) = -\frac{s\,x(t)}{r + s\,(T - t)}}$$
+最佳成本 $J^* = \tfrac12 S(t_0)\,x^2(t_0)$。
+
+**解讀：**
+- 離終點遠：$K$ 小（時間還多，慢慢推就好）；越接近終點 $K$ 越大，最後是 $s/r$
+- $s \to \infty$（硬性要求 $x(T) = 0$）：$K = 1/(T - t)$，$u = -x(t)/(T - t)$ =「剩下的距離 ÷ 剩下的時間」——跟 3.2.7 上方 2024 第 3B 題的開迴路答案（取 $x(T) = 0$）一致。沒有擾動時，閉迴路和開迴路走出同一條軌跡；有擾動時只有閉迴路會修正
+
+**一般 scalar Riccati 的 SOP**：寫成 $\dot s = (\text{$s$ 的二次式})$ → 分離變數 → 有兩個根時用部分分式積分 → 代入終點條件 $s(T)$。
 
 ### 3.4 穩態：代數 Riccati 方程 (ARE)
 
@@ -1328,6 +1436,21 @@ $$\Delta_{cl}(s)\,\Delta_{cl}(-s) = (1 + s)(1 - s) + \frac{q}{r} = 1 + \frac{q}{
 1. **這張表就是回授控制律**：不管從哪個節點出發，查表就知道往哪走。例如從 $d$ 出發 → $e \to h \to i$，油耗 7
 2. **短視會出錯**：如果「每一步只挑眼前最便宜的」，從 $a$ 會先走 $d$（1）、再走 $g$（2）、再 $h$（4）、再 $i$（2），總共 **9**，不是最佳。DP 之所以對，是因為它每一步都看「這一段 + **之後的最佳成本**」
 3. **最佳解不一定唯一**（$a$ 那裡平手）
+
+> 📝 **2024 考過**（第 4 題，15%）：**同一張圖**，但問「用 principle of optimality 找**最大**油耗路線」。做法完全一樣，只是每個節點改取 **max**：
+>
+> | 節點 | 選項（這一段 + 下一站的最大值） | 最大 | 往哪走 |
+> |---|---|---|---|
+> | $f$ | $\to i$: 4 | 4 | $i$ |
+> | $h$ | $\to i$: 2 | 2 | $i$ |
+> | $c$ | $\to f$: $3 + 4$ | 7 | $f$ |
+> | $e$ | $\to f$: $3 + 4 = 7$；$\to h$: $2 + 2 = 4$ | 7 | $f$ |
+> | $g$ | $\to h$: $4 + 2$ | 6 | $h$ |
+> | $b$ | $\to c$: $2 + 7 = 9$；$\to e$: $1 + 7 = 8$ | 9 | $c$ |
+> | $d$ | $\to e$: $3 + 7 = 10$；$\to g$: $2 + 6 = 8$ | 10 | $e$ |
+> | $a$ | $\to b$: $3 + 9 = 12$；$\to d$: $1 + 10 = 11$ | 12 | $b$ |
+>
+> **答案**：$a \to b \to c \to f \to i$，最大油耗 12。題目指定用 principle of optimality，所以要寫出「從終點逆推，每個節點取『這一段 + 下一站的最佳值』」的過程，不能只把所有路徑列出來比。
 
 ### 6.2 離散 DP：Bellman 方程
 
@@ -1601,6 +1724,8 @@ Ch 2、3、6 的方法都有同一個前提：**事先知道模型 $A, B$**，�
 
 **這章要做的**：不用模型、順著時間、**邊跑邊學**，最後學到跟 Riccati 一樣的最佳控制。這就是**強化學習 (RL)**。
 
+> 📝 **2024 考過**（第 5A 題，是非）：「DP 通常是用順著時間（stagewise forward in time）收集的因果經驗來找最佳策略」→ **錯**。DP 是**逆著時間**、**離線**、需要完整模型（Ch 6）；「causal experiences received stagewise forward in time」描述的是 **RL**（課本 11.2 介紹 Bellman 方程時的原句）。
+
 **GPS 比喻（接 Ch 6）**：DP 是拿著地圖在辦公室算好每個路口的牌子；RL 是**沒有地圖的計程車司機**，每天實際開車，慢慢把牌子修準。
 
 **RL 名詞 ↔ 前面的名詞**（同一個東西換了名字）：
@@ -1656,14 +1781,43 @@ $$V(L) = 2 + 0.9\,V(L) \;\Rightarrow\; V(L) = 20$$
 $$V(H) = 0 + 0.9\,[\,0.5\,V(L) + 0.5\,V(H)\,] \;\Rightarrow\; V(H) \approx 16.36$$
 有幾個狀態，就有幾條聯立線性方程。
 
-#### 11.1.4 LQR 的 Bellman 方程就是 Lyapunov 方程
+#### 11.1.4 LQR 的 Bellman 方程就是 Lyapunov 方程，最佳性方程就是 DARE
 
-馬達 $\omega_{k+1} = 0.9\,\omega_k + 0.1\,u_k$，策略 $u = -K\omega$，$V = \tfrac12 p\,\omega^2$，代入 Bellman 方程：
+> 📝 **2024 考過**（第 5F 題，10%）：「show that the Bellman equation (11.5-7) is a linear Lyapunov equation and that (11.5-5) is the DT ARE」。
+> 課本式號對照：**(11.5-7)** = 給定策略的 Bellman 方程 $V^h(x_k) = r_k + \gamma V^h(x_{k+1})$；**(11.5-5)** = Bellman 最佳性方程 $V^*(x_k) = \min_u[r_k + \gamma V^*(x_{k+1})]$（離散 HJB）。LQR 取 $\gamma = 1$。
+
+**先看 scalar**：馬達 $\omega_{k+1} = 0.9\,\omega_k + 0.1\,u_k$，策略 $u = -K\omega$，$V = \tfrac12 p\,\omega^2$，代入 Bellman 方程：
 $$p\,\omega_k^2 = (1 + K^2)\,\omega_k^2 + p\,(0.9 - 0.1K)^2\,\omega_k^2 \;\Rightarrow\; p = \frac{1 + K^2}{1 - (0.9 - 0.1K)^2}$$
-例：$K = 0$ → $p = 1/0.19 = 5.263$。矩陣版：
-$$(A - BK)^TP(A - BK) - P + Q + K^TRK = 0$$
-- 這就是 **Żak Ch 4 的離散 Lyapunov 方程**（$A$ 換成 $A - BK$）——Lyapunov 方程原來是在幫控制器「評分」
-- 最佳性方程則變成 **2.2.5 的 DARE**
+例：$K = 0$ → $p = 1/0.19 = 5.263$。
+
+**矩陣版證明（考試照這樣寫）**
+
+設定：$x_{k+1} = Ax_k + Bu_k$，$r_k = \tfrac12(x_k^TQx_k + u_k^TRu_k)$，猜 $V(x) = \tfrac12 x^TPx$（Ch 6：LQR 的 cost-to-go 是二次式）。
+
+**(1) Bellman 方程 → Lyapunov 方程**
+
+策略 $u_k = -Kx_k$，所以 $x_{k+1} = (A - BK)\,x_k$。代入 (11.5-7)、兩邊乘 2：
+$$x_k^TPx_k = x_k^TQx_k + x_k^TK^TRKx_k + x_k^T(A - BK)^TP\,(A - BK)\,x_k$$
+對所有 $x_k$ 都成立，所以
+$$\boxed{(A - BK)^TP\,(A - BK) - P + Q + K^TRK = 0}$$
+- **對 $P$ 是線性的**（$P$ 只以一次方出現）→ 線性 Lyapunov 方程
+- 就是 Żak Ch 4 的離散 Lyapunov 方程 $A^TPA - P = -Q$，把 $A$ 換成 $A - BK$、$Q$ 換成 $Q + K^TRK$。Lyapunov 方程原來是在幫控制器「評分」
+
+**(2) Bellman 最佳性方程 → DARE**
+
+代入 (11.5-5)、兩邊乘 2：
+$$x^TPx = \min_u\Big[x^TQx + u^TRu + (Ax + Bu)^TP\,(Ax + Bu)\Big]$$
+對 $u$ 微分 $= 0$（0.5 的微分表）：
+$$2Ru + 2B^TP\,(Ax + Bu) = 0 \;\Rightarrow\; u^* = -(B^TPB + R)^{-1}B^TPA\,x$$
+（Hessian $= 2(B^TPB + R) > 0$，確實是最小。）
+
+代回：括號裡跟 $u$ 有關的部分是 $u^T(B^TPB + R)u + 2u^TB^TPAx$，代入 $u^*$ 後等於 $-x^TA^TPB(B^TPB + R)^{-1}B^TPA\,x$。所以
+$$x^TPx = x^T\Big[Q + A^TPA - A^TPB(B^TPB + R)^{-1}B^TPA\Big]x$$
+對所有 $x$ 成立：
+$$\boxed{A^TPA - P + Q - A^TPB\,(B^TPB + R)^{-1}B^TPA = 0}$$
+這就是 **DARE**（2.2.5）。**對 $P$ 是非線性的**（有 $P$ 的乘積和逆矩陣）。
+
+（這個推導跟 6.2.4「用 DP 推離散 Riccati」是同一件事，只是無限時間時 $S_k = S_{k+1} = P$。）
 
 ### 11.2 怎麼解：Policy Iteration 與 Value Iteration
 
@@ -1713,6 +1867,8 @@ LQR 的 **PI** 叫 **Hewer 演算法**：反覆「解 Lyapunov 方程 → 更新
 | 收斂 | **快**（馬達 3 輪） | 慢（馬達 30 輪） |
 | 起點 | ⚠️ 必須讓系統**穩定**，否則評分算出負的、無意義的成本 | **任意** |
 
+> 📝 **2024 考過**（第 5C 題，是非）：「PI 每一步更新 value 時做比較多事，所以收斂步數較少；VI 只做一次 value 更新，最容易實作」→ **對**（課本 Generalized PI 那段的原句）。可以補充：PI 需要穩定的初始策略、VI 不用；兩者的折衷是 generalized PI（評分時做幾次代入，不做到完全收斂）。
+
 ### 11.3 Q 函數：選動作不需要模型
 
 $$Q(x, u) = r(x, u) + \gamma\,V(x') \qquad\Rightarrow\qquad V(x) = \min_u Q(x, u)$$
@@ -1729,6 +1885,8 @@ $$Q(x, u) = r(x, u) + \gamma\,V(x') \qquad\Rightarrow\qquad V(x) = \min_u Q(x, u
 - 用 $V$ 選動作：$\arg\min_u[r + \gamma V(f(x, u))]$ → 要知道 **$f$**，才知道 $u$ 會讓狀態跑去哪
 - 用 $Q$ 選動作：$\arg\min_u Q(x, u)$ → **直接查表比大小，不需要模型**
 
+> 📝 **2024 考過**（第 5D 題，是非）：「Q 函數方法的主要優點：最小化 Bellman 最佳性方程只需要知道 Q 函數，不需要系統動態」→ **對**，理由就是上面兩行的比較。
+
 **LQR 的 Q 函數**是 $[x;\ u]$ 的二次式，矩陣 $G = \begin{bmatrix}G_{xx} & G_{xu}\\ G_{ux} & G_{uu}\end{bmatrix} = \begin{bmatrix}A^TPA + Q & A^TPB\\ B^TPA & B^TPB + R\end{bmatrix}$，對 $u$ 取最小得
 $$K = G_{uu}^{-1}G_{ux}$$
 只要知道 $G$ 就能算 $K$，**不必知道 $A$、$B$**。（課本把 $G$ 叫 $S$，這裡改名避免跟 Ch 2 的 $S_k$ 混淆。）
@@ -1742,6 +1900,19 @@ Bellman 方程 $V(x_k) = r_k + \gamma V(x_{k+1})$ 裡面只有 $x_k$、$r_k$、$
 如果 $V$ 還不準，兩邊會差一點，這個差叫 **TD 誤差 (temporal difference)**：
 $$e_k = \underbrace{r_k + \gamma\,\hat V(x_{k+1})}_{\text{走一步後的新估計}} - \underbrace{\hat V(x_k)}_{\text{原本的估計}}$$
 不斷把它修到 0，$\hat V$ 就會變準。
+
+**三種算 $V$ 的方法：**
+
+| | 精確計算 | Monte Carlo | TD |
+|---|---|---|---|
+| 怎麼算 | 用模型解 Bellman 方程（11.2 的例子） | 從某狀態出發**跑完一整趟**，記錄總成本，跑**很多趟**取平均 | 只走**一步**，用 $r_k + \gamma\hat V(x_{k+1})$ 修正 |
+| 需要模型 | **要** | 不用 | 不用 |
+| 用幾條軌跡 | — | 很多條（重複實驗） | **一條**（現在這條） |
+| 何時更新 | 離線 | 每趟結束後 | **每一步**（線上） |
+
+> 📝 **2024 考過**（第 5E 題，是非）：「不像 Monte Carlo，TD 只用一條樣本軌跡（目前的系統軌跡）來更新 value，並把 TD 誤差修小」→ **對**（課本 11.4 原句）。
+>
+> 📝 **2024 考過**（第 5B 題，是非）：「PI 和 VI 用在一般確定性系統時，都能用沿著軌跡量到的資料線上即時執行」→ **對**：用 TD，評分步驟只需要 $(x_k, r_k, x_{k+1})$（例如下面 11.4.2）。可以補充：PI 的初始策略仍要穩定；若用 $V$ 來改進策略還是需要部分模型，改用 Q-learning 才完全不需要（11.4.3）。
 
 #### 11.4.2 例子：不知道 0.9，也能算出成本
 
@@ -1803,6 +1974,24 @@ LQR 時的 PI 叫 **Kleinman 演算法**（Hewer 的連續版）。連續馬達 
 4. 從 LQR 的 Q 矩陣算 $K$
 5. 解釋 TD、Q-learning 為什麼不需要模型、為什麼要探索
 6. 比較 PI 和 VI
+
+**是非題整理**（2024 第 5 題整題都是這種形式，35%）——答題要寫「對 / 錯 + 理由」，錯的要改正或舉反例：
+
+| 敘述 | 對錯 | 理由 / 改正 | |
+|---|---|---|---|
+| DP 用順著時間收集的經驗找最佳策略 | ✗ | DP 逆著時間、離線、要模型；順著時間用經驗的是 RL | 📝 2024 5A |
+| PI、VI 都能用沿軌跡量到的資料線上執行 | ✓ | 用 TD 做評分，只需要 $(x_k, r_k, x_{k+1})$ | 📝 2024 5B |
+| PI 收斂步數少（每步做較多工）；VI 最容易實作 | ✓ | PI 每輪完整解 Bellman 方程；VI 只代入一次 | 📝 2024 5C |
+| Q 函數方法只需要 Q、不需要系統動態 | ✓ | $u^* = \arg\min_u Q(x, u)$ 直接查表 | 📝 2024 5D |
+| TD 只用一條軌跡；Monte Carlo 要很多趟 | ✓ | TD 每一步更新、把 TD 誤差修小 | 📝 2024 5E |
+| PI 可以從任意初始策略開始 | ✗ | 要穩定（admissible）的策略；VI 才可以任意起點 | |
+| VI 每一輪都算出目前策略真正的 value | ✗ | 只代入一次，不解 Bellman 方程；PI 才完整求解 | |
+| PI / VI 的疊代指標 $j$ 就是時間 | ✗ | $j$ 是疊代次數；Ch 6 的 $k$ 才是時間 | |
+| LQR 的 Bellman 方程是 Lyapunov 方程，最佳性方程是 DARE | ✓ | 11.1.4 的證明（前者對 $P$ 線性、後者非線性） | 📝 2024 5F |
+| Q-learning 時，控制一直照目前策略做就能學到 Q | ✗ | 要加探索雜訊（persistent excitation），否則解不出 $G_{xu}, G_{uu}$ | |
+| DP 的計算量隨狀態維度指數成長 | ✓ | 維度詛咒（6.5）；LQR 因為 $V$ 是二次式而例外 | |
+| DP 得到的是回授（閉迴路）控制律 | ✓ | $u^*(x)$ 是狀態的函數，查表即可 | |
+| 用 Q-learning 解 LQR 需要知道 $A$、$B$ | ✗ | 只要學到 $G$，$K = G_{uu}^{-1}G_{ux}$ | |
 
 ---
 
@@ -2120,6 +2309,8 @@ $$u^*(t) = -\text{sign}(p_2(t)) = -\text{sign}(-c_1 t + c_2)$$
 ---
 
 ## 十二、最容易被考的六種題型
+
+> 2024 實際考了什麼、配分多少，見檔案開頭的「2024 考古題」表；筆記中標 📝 的段落是當年考過的觀念。
 
 1. **給 scalar 系統 + cost**，寫下 Hamiltonian、共態、算出 $u^*$
 2. **給 $(A, B)$**，判斷可控性；給 $(A, C)$，判斷可觀察性

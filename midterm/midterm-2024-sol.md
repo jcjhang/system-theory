@@ -123,23 +123,88 @@ $$x_{k+1} = Ax_k - \frac1r\,bb^T\lambda_{k+1}, \qquad \lambda_k = Qx_k + A^T\lam
 
 ### A.（10%）閉迴路控制
 
-**對應 LQR**：$\dot x = u$、$J = \tfrac12s\,x^2(T) + \tfrac12\int ru^2\,dt$ → $A = 0$、$B = 1$、$Q = 0$、$R = r$、$S(T) = s$。
+**先想清楚要做什麼**：「閉迴路」= 控制要寫成**現在狀態的函數** $u(t) = -K(t)\,x(t)$，不能只是一條事先算好的 $u(t)$ 曲線。系統是線性的、成本是二次的 → 這就是 LQR，而 LQR 的 $K(t)$ 由 Riccati 方程算出。所以流程是：**對應到 LQR 標準式 → 解 Riccati → 得到 $K(t)$**。
 
-**Step 1：Riccati 方程**
-$$-\dot S = A^TS + SA - SBR^{-1}B^TS + Q = -\frac{S^2}{r} \;\Rightarrow\; \dot S = \frac{S^2}{r}, \qquad S(T) = s$$
+**Step 0：把題目對到 LQR 標準式**
 
-（也可以從頭推：$H = \tfrac12ru^2 + \lambda u$，$H_u = 0 \Rightarrow u = -\lambda/r$；$-\dot\lambda = H_x = 0$。猜 $\lambda = Sx$：$\dot\lambda = \dot Sx + S\dot x = \dot Sx - \frac{S^2}{r}x = 0$ 對所有 $x$ 成立 → $\dot S = S^2/r$。邊界 $\lambda(T) = sx(T)$ → $S(T) = s$。）
+連續 LQR 的標準式（§3.3）長這樣：
+$$\dot x = A\,x + B\,u, \qquad J = \tfrac12\,x^T(T)\,S(T)\,x(T) + \tfrac12\int_{t_0}^{T}\big(x^TQx + u^TRu\big)\,dt$$
 
-**Step 2：分離變數**
-$$\frac{dS}{S^2} = \frac{dt}{r} \;\Rightarrow\; \int_{S(t)}^{s}\frac{dS}{S^2} = \int_t^T\frac{d\tau}{r} \;\Rightarrow\; \frac{1}{S(t)} - \frac1s = \frac{T - t}{r}$$
+本題是純量（$x$、$u$ 都是一個數），所以轉置都可以拿掉：$x^TQx = Qx^2$、$u^TRu = Ru^2$。逐項比對：
+
+| 標準式 | 本題 | 所以 |
+|---|---|---|
+| $\dot x = A\,x + B\,u$ | $\dot x = u$（沒有 $x$ 項，$u$ 前面係數是 1） | $A = 0$，$B = 1$ |
+| 積分裡的 $Qx^2$ | 積分裡只有 $ru^2$，沒有 $x^2$ | $Q = 0$ |
+| 積分裡的 $Ru^2$ | $ru^2$ | $R = r$ |
+| 終點項 $\tfrac12S(T)\,x^2(T)$ | $\tfrac12s\,x^2(T)$ | $S(T) = s$ |
+
+白話：$Q = 0$ 代表「過程中 $x$ 離 0 多遠不扣分」，只有終點 $x(T)$ 會被罰 $s$ 倍；過程中只在乎省力（$ru^2$）。
+
+**Step 1：寫出 Riccati 方程，逐項代入**
+
+連續時間 Riccati 方程（§3.3）：
+$$-\dot S = A^TS + SA - SBR^{-1}B^TS + Q$$
+
+一項一項代 $A = 0$、$B = 1$、$R = r$、$Q = 0$：
+- $A^TS = 0 \cdot S = 0$
+- $SA = S \cdot 0 = 0$
+- $SBR^{-1}B^TS = S \cdot 1 \cdot \tfrac1r \cdot 1 \cdot S = \dfrac{S^2}{r}$
+- $Q = 0$
+
+所以
+$$-\dot S = 0 + 0 - \frac{S^2}{r} + 0 \quad\Rightarrow\quad \dot S = \frac{S^2}{r}, \qquad S(T) = s$$
+
+注意邊界條件在**終點** $T$，所以這個方程要**從 $T$ 往回解**（跟 Ch 2 的 Riccati 從 $N$ 往回算一樣）。
+
+<details>
+<summary>（不記得 Riccati 公式？從 Hamiltonian 自己推一次）</summary>
+
+- $H = L + \lambda f = \tfrac12ru^2 + \lambda u$
+- 駐點：$H_u = ru + \lambda = 0 \Rightarrow u = -\lambda/r$
+- 共態：$-\dot\lambda = H_x = 0$（$H$ 裡沒有 $x$）
+- 猜 $\lambda(t) = S(t)\,x(t)$（sweep），兩邊對 $t$ 微分：
+  $\dot\lambda = \dot S\,x + S\,\dot x = \dot S\,x + S\,u = \dot S\,x + S\cdot\big(-\tfrac{Sx}{r}\big) = \big(\dot S - \tfrac{S^2}{r}\big)x$
+- 又 $\dot\lambda = 0$，而且要對所有 $x$ 成立 → $\dot S = S^2/r$
+- 終點條件 $\lambda(T) = \partial\phi/\partial x(T) = s\,x(T)$，對照 $\lambda(T) = S(T)x(T)$ → $S(T) = s$
+
+結果跟上面一樣。
+</details>
+
+**Step 2：解 $\dot S = S^2/r$（分離變數）**
+
+把 $S$ 都移到左邊、$t$ 都移到右邊：
+$$\frac{dS}{dt} = \frac{S^2}{r} \quad\Rightarrow\quad \frac{dS}{S^2} = \frac{dt}{r}$$
+
+兩邊從「現在 $t$」積到「終點 $T$」（因為我們知道的是 $S(T) = s$）：
+$$\int_{S(t)}^{s}\frac{dS}{S^2} = \int_{t}^{T}\frac{d\tau}{r}$$
+
+（$\tau$ 只是積分用的「啞變數」，跟 $dt$ 是同一個東西換個名字。因為 $t$ 已經拿去當積分下限了，如果寫成 $\int_t^T \frac{dt}{r}$，同一個 $t$ 同時代表「固定的下限」和「跑動的變數」，會搞混。積完之後 $\tau$ 會消失，只剩上下限 $T$ 和 $t$。左邊同理：積分變數 $S$ 從 $S(t)$ 跑到 $s$。）
+
+左邊：$\int S^{-2}\,dS = -\dfrac1S$，所以 $\Big[-\dfrac1S\Big]_{S(t)}^{s} = -\dfrac1s + \dfrac1{S(t)}$
+
+右邊：$\dfrac{T - t}{r}$
+
+兩邊相等：
+$$\frac{1}{S(t)} - \frac1s = \frac{T - t}{r} \quad\Rightarrow\quad \frac{1}{S(t)} = \frac1s + \frac{T - t}{r} = \frac{r + s\,(T - t)}{s\,r}$$
+
+倒過來：
 $$\boxed{S(t) = \frac{s\,r}{r + s\,(T - t)}}$$
-驗算：$t = T$ 時 $S = s$ ✓；代回 $\dot S = \dfrac{s^2r}{(r + s(T-t))^2} = \dfrac{S^2}{r}$ ✓
 
-**Step 3：增益與閉迴路控制**
-$$K(t) = R^{-1}B^TS(t) = \frac{S(t)}{r} = \frac{s}{r + s\,(T - t)}$$
+驗算：
+- $t = T$：$S = \dfrac{sr}{r} = s$ ✓（邊界條件對）
+- 微分：$\dot S = \dfrac{sr \cdot s}{(r + s(T-t))^2} = \dfrac{1}{r}\cdot\dfrac{(sr)^2}{(r + s(T-t))^2} = \dfrac{S^2}{r}$ ✓（方程對）
+
+**Step 3：從 $S(t)$ 得到增益與閉迴路控制**
+
+LQR 的增益公式 $K(t) = R^{-1}B^TS(t)$，代 $R = r$、$B = 1$：
+$$K(t) = \frac1r \cdot 1 \cdot S(t) = \frac{S(t)}{r} = \frac{s}{r + s\,(T - t)}$$
 $$\boxed{u^*(t) = -K(t)\,x(t) = -\frac{s}{r + s\,(T - t)}\,x(t)}$$
 
-**最佳成本**：$J^* = \tfrac12S(t_0)\,x^2(t_0) = \dfrac{s\,r\,x^2(t_0)}{2\big(r + s(T - t_0)\big)}$
+這就是閉迴路：每個時刻量 $x(t)$，乘上 $-K(t)$ 就是當下的控制。
+
+**最佳成本**：LQR 的最佳成本是 $J^* = \tfrac12\,x^T(t_0)\,S(t_0)\,x(t_0)$，純量就是把 $t = t_0$ 代進 $S(t)$：
+$$J^* = \tfrac12S(t_0)\,x^2(t_0) = \frac{s\,r\,x^2(t_0)}{2\big(r + s(T - t_0)\big)}$$
 
 **解讀**：
 - 增益隨時間**變大**：離終點遠時 $K$ 小（時間多，可以慢慢推），到終點時 $K(T) = s/r$
@@ -148,30 +213,102 @@ $$\boxed{u^*(t) = -K(t)\,x(t) = -\frac{s}{r + s\,(T - t)}\,x(t)}$$
 
 ### B.（10%）開迴路控制，終點固定 $x(T)$
 
-終點固定時終點權重不影響答案（$x(T)$ 已經給定），所以只剩 $J = \tfrac12\int_{t_0}^Tru^2\,dt$。
+#### 先搞懂：B 跟 A 差在哪？
 
-**Step 1：Hamiltonian**：$H = \tfrac12ru^2 + \lambda u$
+把 $\dot x = u$ 想成一台車：$x$ 是**位置**，$u$ 是**速度**（你直接決定速度），$\int ru^2$ 是耗能（速度的**平方**）。
 
-**Step 2：三個條件**
-- 狀態：$\dot x = u$
-- 共態：$-\dot\lambda = \dfrac{\partial H}{\partial x} = 0 \;\Rightarrow\; \lambda(t) = \nu$（常數）
-- 駐點：$0 = \dfrac{\partial H}{\partial u} = ru + \lambda \;\Rightarrow\; u = -\dfrac{\nu}{r}$（也是常數）
+A 和 B 是**同一台車、同樣的耗能**，只有「終點的規定」不一樣：
 
-**Step 3：解狀態方程**
-$$x(t) = x(t_0) - \frac{\nu}{r}(t - t_0)$$
+| | A | B |
+|---|---|---|
+| 終點規定 | **沒到 0 就罰錢** $\tfrac12s\,x^2(T)$（沒到也行，只是被罰） | **一定要準時到** $x(T)$（硬性規定） |
+| $\tfrac12s\,x^2(T)$ | 終點位置由你決定 → 罰金會變 → **要留著** | 終點已經規定好 → 罰金是固定數字 → **丟掉** |
+| 終點條件（三條件最後一步用的） | $\lambda(T) = s\,x(T)$ | $x(T) = $ 給定值 |
+| 題目要的 | 閉迴路 $u = -K(t)\,x(t)$ | 開迴路 $u^*(t)$ |
+| 用的方法 | 三條件 + **Riccati 捷徑**（有 $S$） | **只用三條件**（沒有 $S$） |
 
-**Step 4：邊界條件**：$x(T)$ 固定（$\lambda(T) = \nu$ 是未知數）
-$$x(T) = x(t_0) - \frac{\nu}{r}(T - t_0) \;\Rightarrow\; \nu = -\frac{r\,\big(x(T) - x(t_0)\big)}{T - t_0}$$
+**為什麼 B 沒有 $S$？** 不管 A 還是 B，底層都是同一套「Hamiltonian 三條件」。Riccati（$S$）只是一個**捷徑**，靠的是猜 $\lambda(t) = S(t)\,x(t)$，而這個猜法要從終點開始成立：
+- A 的終點條件 $\lambda(T) = s\,x(T)$ 剛好是「數字 × $x$」→ 令 $S(T) = s$，猜法起得了頭 → 有 $S$
+- B 的終點條件只說「$x(T)$ 要等於給定值」，$\lambda(T)$ 是個未知數，不是「數字 × $x$」→ 猜法起不了頭 → **沒有 $S$**，直接把三條件算完就好
 
-**答案**：
-$$\boxed{u^*(t) = \frac{x(T) - x(t_0)}{T - t_0}}, \qquad x^*(t) = x(t_0) + \frac{x(T) - x(t_0)}{T - t_0}(t - t_0)$$
-最小成本 $J^* = \dfrac{r\,\big(x(T) - x(t_0)\big)^2}{2(T - t_0)}$。
+所以 B 不是換了新方法，而是**回到最原本的三條件**，不走捷徑。（下面最後會驗證：A 其實也能用 B 的算法算，答案一樣。）
 
-**解讀**：控制是常數 → 狀態**等速**從 $x(t_0)$ 走到 $x(T)$。因為系統沒有摩擦（沒有 $x$ 項），早出力晚出力效果一樣，而 $\int u^2$ 在總位移固定時，均勻分配最省（Cauchy–Schwarz）。
+#### 再猜答案（用數字）
 
-**跟 A 的關係**：取 $x(T) = 0$，B 的答案在任意時刻 $t$ 重新計算就是 $u = -x(t)/(T - t)$，正是 A 在 $s \to \infty$ 時的閉迴路控制。沒有擾動時兩者走出同一條軌跡；有擾動時只有閉迴路會修正。
+題目問：**速度要怎麼安排，才能準時到達、又最省能量？**
 
-**觀念**：連續 LQR、scalar Riccati 分離變數、終點固定的一般 SOP、開迴路 vs 閉迴路 → §3.2、§3.3.6
+假設 $x(t_0) = 0$、$x(T) = 10$、$T - t_0 = 2$ 秒、$r = 1$。要在 2 秒內走 10：
+
+| 安排 | 速度 | $\int u^2\,dt$ |
+|---|---|---|
+| 前 1 秒衝、後 1 秒停 | 10, 0 | $10^2 \times 1 + 0 = 100$ |
+| 前 1 秒 7、後 1 秒 3 | 7, 3 | $49 + 9 = 58$ |
+| **全程等速** | 5, 5 | $25 + 25 = \mathbf{50}$ |
+
+因為成本是**平方**，忽快忽慢會被重罰，**平均分配最省**。所以答案應該是「等速走完」：
+$$u = \frac{\text{要走的距離}}{\text{可用的時間}} = \frac{x(T) - x(t_0)}{T - t_0}$$
+
+下面用三條件把它**證明**出來。
+
+#### 正式步驟
+
+成本只剩 $J = \tfrac12\int_{t_0}^Tr\,u^2\,dt$（$s$ 那項丟掉了）。
+
+**Step 1：寫 Hamiltonian** $H = L + \lambda f$
+- $L$ = 積分裡的東西 = $\tfrac12ru^2$
+- $f$ = $\dot x$ 的右邊 = $u$
+
+$$H = \tfrac12ru^2 + \lambda u$$
+
+**Step 2：對 $u$ 微分 = 0（駐點條件）→ 把 $u$ 用 $\lambda$ 表示**
+$$\frac{\partial H}{\partial u} = ru + \lambda = 0 \;\Rightarrow\; u = -\frac{\lambda}{r}$$
+
+**Step 3：共態方程 $-\dot\lambda = \partial H/\partial x$ → 求 $\lambda$ 長什麼樣**
+
+$H = \tfrac12ru^2 + \lambda u$ 裡面**沒有 $x$**，所以
+$$-\dot\lambda = \frac{\partial H}{\partial x} = 0 \;\Rightarrow\; \lambda \text{ 不隨時間變，是常數，叫它 } \nu$$
+
+代回 Step 2：$u = -\nu/r$，**也是常數**。→ 已經證明了「等速」，只差這個常數是多少。
+
+**Step 4：解狀態方程 → 位置隨時間怎麼走**
+
+$\dot x = u = $ 常數，所以位置是一條直線：
+$$x(t) = x(t_0) + u\,(t - t_0)$$
+
+**Step 5：用終點條件定出常數**（← A 和 B 唯一不同的一步）
+
+終點固定 → 代 $t = T$，必須等於給定的 $x(T)$：
+$$x(T) = x(t_0) + u\,(T - t_0) \;\Rightarrow\; \boxed{u^* = \frac{x(T) - x(t_0)}{T - t_0}}$$
+
+跟一開始猜的一樣 ✓（如果題目要 $\lambda$：$\nu = -ru^* = -\dfrac{r\,(x(T) - x(t_0))}{T - t_0}$）
+
+**Step 6：最小成本**（$u^*$ 是常數，積分 = 常數 × 時間長度）
+$$J^* = \tfrac12\,r\,(u^*)^2\,(T - t_0) = \frac{r\,\big(x(T) - x(t_0)\big)^2}{2(T - t_0)}$$
+（數字例：$\tfrac12 \cdot 1 \cdot 25 \cdot 2 = 25$，就是上表的 50 再乘 $\tfrac12$ ✓）
+
+**最佳軌跡**：$x^*(t) = x(t_0) + \dfrac{x(T) - x(t_0)}{T - t_0}(t - t_0)$（直線）
+
+**為什麼是「開迴路」？** 答案只跟起點、終點、時間有關，出發前就算好了，**途中不看**現在的 $x(t)$。途中被推了一下，它不會修正。
+
+#### 一句話記流程
+
+> 寫 $H$ → $\partial H/\partial u = 0$ 得 $u(\lambda)$ → $-\dot\lambda = \partial H/\partial x$ 解出 $\lambda$ → 代回得 $u$ → 解 $\dot x$ → **用終點條件定常數**（固定：$x(T) = $ 給定值；自由：$\lambda(T) = \partial\phi/\partial x$）
+
+#### 驗證：A 也能用 B 的算法算
+
+Step 1–4 完全照抄（$u = -\nu/r$，$x(T) = x(t_0) - \frac{\nu}{r}(T - t_0)$），Step 5 改用 A 的終點條件 $\nu = \lambda(T) = s\,x(T)$：
+
+$$x(T) = x(t_0) - \frac{s\,x(T)}{r}(T - t_0) \;\Rightarrow\; x(T) = \frac{r\,x(t_0)}{r + s(T - t_0)} \;\Rightarrow\; u = -\frac{s\,x(T)}{r} = -\frac{s\,x(t_0)}{r + s(T - t_0)}$$
+
+把「起點」換成「現在」（$t_0 \to t$、$x(t_0) \to x(t)$）：$u = -\dfrac{s}{r + s(T - t)}\,x(t)$，**就是 3A 用 Riccati 算出來的答案** ✓。所以 Riccati 真的只是捷徑。
+
+再讓 $s \to \infty$（罰金無限大 = 一定要到 0）：$u \to -\dfrac{x(t_0)}{T - t_0}$，就是 B 取 $x(T) = 0$ 的答案。A 和 B 在這裡接起來。
+
+#### 另一條路（套公式）
+
+這是「終點固定、最小能量」問題，A4 上有 Gramian 公式。$A = 0$、$B = 1$、$R = r$ → $G = \int_{t_0}^T\tfrac1r\,d\tau = \tfrac{T - t_0}{r}$，$u = R^{-1}B^TG^{-1}\big(x(T) - x(t_0)\big) = \tfrac{x(T) - x(t_0)}{T - t_0}$，答案相同。
+
+**觀念**：終點固定的一般 SOP、開迴路 vs 閉迴路 → §3.2、§3.3.6
 
 ---
 

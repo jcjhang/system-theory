@@ -271,13 +271,70 @@ DP 和 Riccati 都要**事先知道模型**，而且是**逆著時間、離線**
 - 跟 Ch 6 的關鍵差別：**等號兩邊是同一個函數**（沒有終點可以起算），所以不能一路逆推，要**解方程**或**反覆疊代**
 - 有限個狀態時，Bellman 方程就是一組**聯立線性方程**
 
-### LQR 時這兩條方程變成什麼
+### LQR 時這兩條方程變成什麼：LQR、Bellman、Lyapunov、DARE、ARE 的關係
 
-用第 4 節的「猜二次式、比較係數」套路：
-- Bellman 方程（固定策略 $u = -Kx$）→ **Lyapunov 方程**，對 $P$ 是**線性**的
-- Bellman 最佳性方程（再對 $u$ 取最小）→ **DARE**，對 $P$ 是**非線性**的
+**先分清楚兩類東西**：**LQR** 是一個**問題**（線性系統 $x_{k+1} = Ax + Bu$ + 二次成本 $\sum(x^TQx + u^TRu)$）；**Bellman** 是一個通用的**框架**。**Lyapunov、DARE、ARE** 都是解這個問題時冒出來的**方程**。
 
-要「證明」時，關鍵步驟就是：$V = \tfrac12 x^TPx$ 代入 → 策略或 $u^*$ 代入 → 「對所有 $x$ 成立」→ 比較矩陣。
+**同一個 LQR 可以問兩種事**
+
+| 問題 | 意思 | 得到的方程 | 對 $P$ |
+|---|---|---|---|
+| **評分** | $K$ 已經給你（$u = -Kx$），這樣控制總成本多少？ | **Lyapunov 方程** | **線性** |
+| **最佳化** | 哪個 $K$ 最好？最小成本多少？ | **Riccati 方程**（DARE / ARE） | **非線性** |
+
+兩種的答案都長成「總成本 $= x^TPx$」，差別只在 $P$ 要滿足哪條方程。
+
+**Bellman 是通用框架，LQR 代進去才變成這兩條**
+
+- Bellman 方程（評分）：$V(x_k) = r_k + V(x_{k+1})$（總成本 = 這步成本 + 下一個狀態的總成本）→ 代入 LQR 得 **Lyapunov**
+- Bellman 最佳性方程（最佳化）：$V^*(x_k) = \min_u[r_k + V^*(x_{k+1})]$ → 代入 LQR 得 **DARE**
+
+所以「LQR 的 Bellman 方程就是 Lyapunov 方程」= 把 LQR 的 $A, B, Q, R$ 代進通用的 Bellman 方程，整理出來剛好是 Lyapunov 方程的樣子。
+
+**用 scalar 例子看**（$x_{k+1} = x + u$，$r = x^2 + u^2$，$V = Px^2$）
+
+- **評分（Lyapunov）**：$K$ 固定，代入 Bellman：
+  $$P = (1 + K^2) + (1 - K)^2P$$
+  $K$ 是已知數字，$P$ 只出現一次方 → **線性**，移項就解得出：$P = \dfrac{1 + K^2}{K(2 - K)}$
+- **最佳化（DARE）**：多了 $\min_u$，對 $u$ 微分得 $K = \dfrac{P}{1 + P}$，**$K$ 本身變成 $P$ 的函數**。代回上式：
+  $$P = 1 + \frac{P}{1 + P} \;\Rightarrow\; P^2 - P - 1 = 0$$
+  出現 $P^2$ → **非線性**
+
+> **一句話：Riccati = Lyapunov + 把「最好的 $K$」代進去。** 非線性就是這樣來的：$K$ 裡面有 $P$，代進去後 $P$ 跟自己相乘（矩陣版就是 $PB(\cdot)^{-1}B^TP$ 那項）。
+
+**DARE、ARE 和其他 Riccati：只差離散 / 連續、有限 / 無限時間**
+
+| | 評分（給定 $K$，線性） | 最佳化・有限時間（隨時間變） | 最佳化・無限時間（常數） |
+|---|---|---|---|
+| **離散** | $(A{-}BK)^TP(A{-}BK) - P + Q + K^TRK = 0$ | Riccati 遞迴 $S_k$（Ch 2，從 $N$ 往回算） | **DARE** |
+| **連續** | $(A{-}BK)^TP + P(A{-}BK) + Q + K^TRK = 0$ | Riccati 微分方程 $S(t)$（Ch 3，從 $T$ 往回解） | **ARE**（CARE） |
+
+- 有限時間的 Riccati 往回算夠久，會收斂成常數 → 那個常數就是 DARE / ARE 的解
+- Ch 3 的 $-\dot S = A^TS + SA - SBR^{-1}B^TS + Q$，令 $\dot S = 0$ 就是 ARE
+
+**跟其他章的連結**
+
+- **Żak Ch 4 的 Lyapunov** $A^TP + PA = -Q$ 是同一條，只是 $K = 0$（不控制）：算的是「不控制時 $\int x^TQx\,dt = x_0^TPx_0$」（二次型指標）。解得出正定 $P$ = 成本有限 = 穩定
+- **PI / VI 就是在這兩條之間來回**：
+  - PI（Hewer / Kleinman）：解 Lyapunov 得目前 $K$ 的 $P$ → 用 $P$ 更新 $K$ → 重複
+  - VI：把舊 $P$ 代進 Riccati 遞迴得新 $P$（= Ch 2 的 Riccati 逆推）
+
+```
+            LQR 問題
+               │
+     代進 Bellman 框架
+        ┌──────┴──────┐
+   評分（給定 K）    最佳化（min over u）
+   Bellman 方程     Bellman 最佳性方程
+        │                 │
+   Lyapunov 方程      Riccati 方程
+   （線性）          （非線性 = Lyapunov + 最好的 K）
+                    ┌─────┴─────┐
+                 離散          連續
+              S_k → DARE    S(t) → ARE
+```
+
+要「證明」時，關鍵步驟：$V = \tfrac12 x^TPx$ 代入 → 策略或 $u^*$ 代入 → 「對所有 $x$ 成立」→ 比較矩陣。
 
 ### Policy Iteration vs Value Iteration
 

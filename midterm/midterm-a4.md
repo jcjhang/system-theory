@@ -195,7 +195,7 @@ $H = L + \lambda^Tf$：$\dot x = f$；$-\dot\lambda = H_x = f_x^T\lambda + L_x$ 
 - $V^\pi(x) = E_\pi\{\sum_{i \ge 0}\gamma^ir_{k+i} \mid x_k = x\}$，$0 \le \gamma < 1$（$\gamma = 1$ 需終止或穩定）
 - **Bellman**：$V^\pi(x) = \sum_u\pi\sum_{x'}P^u_{xx'}[R^u_{xx'} + \gamma V^\pi(x')]$；確定性 $V^h(x_k) = r_k + \gamma V^h(x_{k+1})$
 - **最佳性**：$V^*(x) = \min_u\sum_{x'}P^u_{xx'}[R^u_{xx'} + \gamma V^*(x')]$（= 離散 HJB；兩邊同一個 $V$ → 疊代）
-- **閉迴路 Markov chain**：$p_{ij} = \sum_u\pi(i, u)P^u_{ij}$，$V = \gamma PV + (P \odot R)\mathbf 1 \Rightarrow V = (I - \gamma P)^{-1}(P \odot R)\mathbf 1$；穩態分布 $p_\infty^T = p_\infty^TP$（$\lambda = 1$ 的左特徵向量），$p(i) = 1/T_i$（平均回訪時間）
+- **閉迴路 Markov chain**：$p_{ij} = \sum_u\pi(i, u)P^u_{ij}$，$V = \gamma PV + (P \odot R)\mathbf 1 \Rightarrow V = (I - \gamma P)^{-1}(P \odot R)\mathbf 1$；穩態分布 $p_\infty^T = p_\infty^TP$（$\lambda = 1$ 的左特徵向量），$p(i) = 1/T_i$（平均回訪時間）；$p_{k+1}^T = p_k^TP$；$(P \odot R)\mathbf 1 = c$（$c_i = \sum_u\pi\sum_jP^u_{ij}R^u_{ij}$ = 走一步期望成本）；長期平均成本 $\bar V = p_\infty^Tc$。先檢查 $P$ 每列和 = 1；穩態要補 $\sum p = 1$；ergodic ⇒ 有確定性最佳策略
 - **LQR** 📐 $x_{k+1} = Ax_k + Bu_k$，策略 $u_k = -Kx_k$，$r_k = \tfrac12(x_k^TQx_k + u_k^TRu_k)$，$V(x_k) = \sum_{i \ge k}r_i = \tfrac12x_k^TPx_k$（$\gamma = 1$）：Bellman ⇔ $(A - BK)^TP(A - BK) - P + Q + K^TRK = 0$（Lyapunov，對 $P$ 線性）；最佳性 ⇔ DARE（非線性），$u = -(B^TPB + R)^{-1}B^TPAx$；離散 Hamiltonian $H = r_k + V(x_{k+1}) - V(x_k)$ = TD 誤差
 
 **PI / VI**（$j$ = 疊代，非時間；改進 = greedy $h' = \arg\min_u[r + \gamma V(x')]$，保證 $V^{h'} \le V^h$）

@@ -191,6 +191,47 @@ $$\theta(t) = (\theta_0 + \omega_0) - \omega_0 e^{-t}, \qquad \omega(t) = \omega
 | 沿特徵方向 | $e^{\lambda t}$ | $\lambda^k$ |
 | 穩定條件 | $\text{Re}(\lambda) < 0$（左半平面） | $\lvert\lambda\rvert < 1$（單位圓內） |
 
+#### 0.3.3 行列式 det：怎麼算、為什麼是面積
+
+特徵值（0.3.1）、正定（0.4）、可控性（Żak Ch 3）都會用到 $\det$。
+
+**怎麼算**
+
+**2×2**：
+$$\det\begin{bmatrix}a & b\\ c & d\end{bmatrix} = ad - bc$$
+（主對角線相乘 − 反對角線相乘）例：$\det\begin{bmatrix}3 & 1\\ 1 & 2\end{bmatrix} = 6 - 1 = 5$
+
+**3×3**：沿第一列展開（每個元素 × 刪掉它那列那行剩下的 2×2 det，正負號交替 $+ - +$）：
+$$\det\begin{bmatrix}a & b & c\\ d & e & f\\ g & h & i\end{bmatrix} = a\det\begin{bmatrix}e & f\\ h & i\end{bmatrix} - b\det\begin{bmatrix}d & f\\ g & i\end{bmatrix} + c\det\begin{bmatrix}d & e\\ g & h\end{bmatrix}$$
+例：
+$$\det\begin{bmatrix}2 & 0 & 1\\ 1 & 3 & 0\\ 0 & 1 & 1\end{bmatrix} = 2(3 \cdot 1 - 0 \cdot 1) - 0(\cdots) + 1(1 \cdot 1 - 3 \cdot 0) = 6 + 1 = 7$$
+（挑 0 最多的那列 / 行展開最省事，0 那項直接跳過。）
+
+**一眼看出來的捷徑**：
+- 有一整列（或一整行）是 0 → $\det = 0$
+- 有兩行（或兩列）成比例 → $\det = 0$
+- 三角矩陣（含對角矩陣）→ $\det$ = 對角線相乘
+
+**為什麼 $\det$ = 面積**
+
+把 $\begin{bmatrix}a & b\\ c & d\end{bmatrix}$ 的兩個**行**看成平面上兩個向量 $v_1 = (a, c)$、$v_2 = (b, d)$，它們撐出一個平行四邊形（頂點 $0$、$v_1$、$v_2$、$v_1 + v_2$）。
+
+**方法一：大長方形扣掉多的部分**（以 $a, b, c, d > 0$、$v_1$ 在右下、$v_2$ 在左上為例）
+
+
+外框長方形 $(a + b) \times (c + d)$（從原點到 $v_1 + v_2$），平行四邊形以外的部分是：兩對三角形（面積 $\tfrac12ac \times 2$、$\tfrac12bd \times 2$）和兩個小長方形（$bc \times 2$）：
+$$(a + b)(c + d) - ac - bd - 2bc = ad - bc$$
+例：$v_1 = (3, 1)$、$v_2 = (1, 2)$ → 外框 $4 \times 3 = 12$，扣 $3 + 2 + 2 = 7$，面積 $5 = \det$ ✓
+
+**方法二：推斜不改面積**（這也解釋了 $\det$ 的性質）
+- 把 $v_2$ 加上 $v_1$ 的倍數，平行四邊形只是沿著 $v_1$ 那條邊**推斜**，底和高不變 → 面積不變。這就是「列運算（加倍數）不改 $\det$」
+- 一直推到變成長方形（三角矩陣）→ 面積 = 兩邊長相乘 = 對角線相乘
+- 3 維時同理：三個行向量撐出平行六面體，$\det$ = 體積
+
+**正負號**：$\det < 0$ 代表兩個向量的順序「翻轉」了（順時針 vs 逆時針），面積是 $\lvert\det\rvert$。判斷可逆、滿秩只看是不是 0。
+
+**跟可控性的關係**：$\mathcal C = [B\ \ AB]$ 的兩行是「輸入能推動的方向」。$\det = 0$ = 兩個方向平行 = 平行四邊形壓扁成一條線 = 只推得動一個方向，另一個方向到不了 → 不可控。
+
 ### 0.4 什麼是「正定 (positive definite)」？
 
 **先從一維開始。** $V(x) = p x^2$：
@@ -209,9 +250,9 @@ $$x^T P x = p_{11}x_1^2 + 2p_{12}x_1x_2 + p_{22}x_2^2$$
 
 | $P$ | $x^T P x$ | 結論 |
 |---|---|---|
-| $\begin{bmatrix}2 & 0\\ 0 & 3\end{bmatrix}$ | $2x_1^2 + 3x_2^2$ | 非零時一定 $> 0$ → **正定** $P > 0$ |
-| $\begin{bmatrix}1 & 1\\ 1 & 1\end{bmatrix}$ | $(x_1 + x_2)^2$ | 永遠 $\ge 0$，但 $x = [1,-1]^T$ 時 $= 0$ → **半正定** $P \ge 0$ |
-| $\begin{bmatrix}1 & 2\\ 2 & 1\end{bmatrix}$ | $x_1^2 + 4x_1x_2 + x_2^2$ | $x = [1,-1]^T$ 時 $= -2 < 0$ → **不是正定** |
+| $\begin{bmatrix}2 & 0\cr 0 & 3\end{bmatrix}$ | $2x_1^2 + 3x_2^2$ | 非零時一定 $> 0$ → **正定** $P > 0$ |
+| $\begin{bmatrix}1 & 1\cr 1 & 1\end{bmatrix}$ | $(x_1 + x_2)^2$ | 永遠 $\ge 0$，但 $x = [1,-1]^T$ 時 $= 0$ → **半正定** $P \ge 0$ |
+| $\begin{bmatrix}1 & 2\cr 2 & 1\end{bmatrix}$ | $x_1^2 + 4x_1x_2 + x_2^2$ | $x = [1,-1]^T$ 時 $= -2 < 0$ → **不是正定** |
 
 **直覺**：正定的 $V(x) = x^T P x$ 就像一個「碗」——最低點在原點，其他地方都比 0 大。半正定則像「水溝」，有一整條線的高度都是 0。
 
@@ -2423,6 +2464,26 @@ $$u^*(t) = -\text{sign}(p_2(t)) = -\text{sign}(-c_1 t + c_2)$$
 | Pontryagin | 對 $u$ 微分為零得到 $u^* = -R^{-1}B^T p$ | Żak Ch 5 |
 
 **連續版都得到 $u^* = -R^{-1} B^T P x = -K x$，其中 $P$ 由 ARE 決定。** 離散版（Ch 2、Ch 11）是 $K = (B^TPB + R)^{-1}B^TPA$，取 $\Delta t \to 0$ 就變回連續版（§3.3.3）。
+
+### 符號對照：$S$ 和 $P$ 是同一個東西嗎？
+
+**共同意義**：都是「**cost-to-go 矩陣**」——從狀態 $x$ 出發，剩下的成本 $= x^TPx$（或 $\tfrac12x^TSx$）。差別在**哪個策略**、**有限還是無限時間**：
+
+| 符號 | 出處 | 方程 | 代表的成本 |
+|---|---|---|---|
+| $S_k$、$S(t)$ | Lewis Ch 2、3 | Riccati **差分 / 微分**方程（逆著時間算） | **有限時間**、**最佳**控制下的剩餘成本 |
+| $S_\infty$ | Lewis Ch 2、3（穩態） | DARE / ARE | **無限時間**、**最佳**控制 |
+| $P$（Żak Ch 5 LQR） | Żak Ch 5 | ARE $A^TP + PA + Q - PBR^{-1}B^TP = 0$ | 同 $S_\infty$ |
+| $P$（Lewis Ch 11，最佳） | Lewis Ch 11 | DARE（Bellman 最佳性方程） | 同 $S_\infty$（離散） |
+| $P$（Żak Ch 4 Lyapunov） | Żak Ch 4 | Lyapunov $A^TP + PA = -Q$ | **給定的**系統（不控制、或某個固定回授）的成本 $\int_0^\infty x^TQx\,dt = x_0^TPx_0$ |
+| $P$（Lewis Ch 11，給定策略） | Lewis Ch 11 | Lyapunov $(A - BK)^TP(A - BK) - P + Q + K^TRK = 0$ | 給定策略 $u = -Kx$ 的成本（PI 的評分） |
+
+**一句話**：
+- **Riccati / ARE 的解**（$S$、Żak Ch 5 的 $P$、Lewis Ch 11 最佳的 $P$）= **最佳**控制的成本矩陣
+- **Lyapunov 方程的解**（Żak Ch 4 的 $P$、PI 評分的 $P$）= **某個給定**系統 / 策略的成本矩陣（也是 Lyapunov 函數 $V = x^TPx$，所謂「能量」）
+- 兩者的關係：把最佳增益 $K^*$ 代進 Lyapunov 方程，解出來的 $P$ 就**等於** ARE 的解（Lewis Ch 11、Hewer 演算法收斂時就是這樣）
+
+**注意 $\tfrac12$**：Lewis 寫 $J^* = \tfrac12x^TSx$（成本有 $\tfrac12$）；Żak Ch 4 寫 $J = x_0^TPx_0$（成本沒有 $\tfrac12$）。比較數字時先看成本定義有沒有 $\tfrac12$。
 
 ---
 

@@ -385,8 +385,8 @@ Bellman 方程裡只有 $x_k$、$r_k$、$x_{k+1}$，這三個都量得到。估�
 
 | | 可控性 | 可觀察性 |
 |---|---|---|
-| 矩陣秩 | $\text{rank}[B\ AB\ \cdots\ A^{n-1}B] = n$ | $\text{rank}\begin{bmatrix}C\\ CA\\ \vdots\\ CA^{n-1}\end{bmatrix} = n$ |
-| PBH | $\text{rank}[sI - A\ \ B] = n$，每個 $s \in \text{eig}(A)$ | $\text{rank}\begin{bmatrix}sI - A\\ C\end{bmatrix} = n$，每個 $s \in \text{eig}(A)$ |
+| 矩陣秩 | $\text{rank}[B\ AB\ \cdots\ A^{n-1}B] = n$ | $\text{rank}\begin{bmatrix}C\cr CA\cr \vdots\cr CA^{n-1}\end{bmatrix} = n$ |
+| PBH | $\text{rank}[sI - A\ \ B] = n$，每個 $s \in \text{eig}(A)$ | $\text{rank}\begin{bmatrix}sI - A\cr C\end{bmatrix} = n$，每個 $s \in \text{eig}(A)$ |
 | Gramian | $W = \int e^{-At}BB^Te^{-A^Tt}dt$ 非奇異 | $V = \int e^{A^Tt}C^TCe^{At}dt$ 非奇異 |
 | 弱一點的版本 | stabilizable：控制不到的部分自己會穩定 | detectable：看不到的部分自己會穩定 |
 

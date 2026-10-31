@@ -1,0 +1,34 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+50/200
+100/200
+150/200
+200/200
+{
+ "name": "grpo_step_hack",
+ "n": 200,
+ "accuracy": 0.51,
+ "format_correctness": 0.065,
+ "avg_tokens": 215.06,
+ "avg_steps": 9.495,
+ "accuracy_by_steps": {
+  "1-2": {
+   "acc": 0.65625,
+   "n": 64
+  },
+  "3-4": {
+   "acc": 0.4673913043478261,
+   "n": 92
+  },
+  "5+": {
+   "acc": 0.38636363636363635,
+   "n": 44
+  }
+ },
+ "error_types": {
+  "calculation": 2,
+  "format": 91,
+  "reasoning/understanding": 5
+ },
+ "eval_seconds": 169.516339302063,
+ "peak_mem_gb": 4.375551700592041
+}

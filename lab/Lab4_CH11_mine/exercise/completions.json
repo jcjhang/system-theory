@@ -1,0 +1,37 @@
+{
+ "description": "Qwen3-0.6B-Base + SFT 在 GRPO 訓練中（accuracy reward）對同一題產生的 8 個真實回答",
+ "groups": [
+  {
+   "question": "There are 14 red crayons, 5 more blue crayons than red crayons, and 6 less yellow crayons than double the blue crayons.  How many yellow crayons are there?",
+   "ground_truth": "32",
+   "completions": [
+    "Let me solve this step by step.\nStep 1: There are 5 + 14 = 19 blue crayons.\nStep 2: Yellow crayons are 6 * 19 - 6 = 114 - 6 = 108.\nFinal Answer: 108",
+    "Let me solve this step by step.\nStep 1: There are 5+14=19 blue crayons.\nStep 2: There are 19*2=38 blue crayons\nStep 3: There are 38-6=32 yellow crayons.\nFinal Answer: 32",
+    "Let me solve this step by step.\nStep 1: The number of blue crayons is 14 + 5 = 19.\nStep 2: The double the number of blue crayons is 19 * 2 = 38.\nStep 3: So the number of yellow crayons is 38 - 6 = 32.\nFinal Answer: 32",
+    "Let me solve this step by step.\nStep 1: There are 5+14 = 19 blue crayons\nStep 2: The blue crayons are double the red crayons, meaning there are 19*2 = 38 blue crayons\nStep 3: There are 6 less yellow crayons than the double the blue crayons, meaning there are 38*2-6 = 70 yellow crayons\nFinal Answer: 70",
+    "Let me solve this step by step.\nStep 1: There are 14+5 = 19 blue crayons.\nStep 2: The double the number of red crayons is 14*2 = 28\nStep 3: There are 28-6 = 22 yellow crayons.\nFinal Answer: 22",
+    "Let me solve this step by step.\nStep 1: There are 5 + 14 = 19 blue crayons.\nStep 2: Yellow crayons are 2 * 19 - 6 = 32 - 6 = 26.\nStep 3: There are 26 yellow crayons.\nFinal Answer: 26",
+    "Let me solve this step by step.\nStep 1: There are 5 + 14 = 19 blue crayons.\nStep 2: The blue and red crayons make 14 + 19 = 33.\nStep 3: The yellow crayons are 6 less than double the 19 blue crayons, which is 2*19 - 6 = 32.\nFinal Answer: 32",
+    "Let me solve this step by step.\nStep 1: There are 5+14=19 blue crayons.\nStep 2: There are 6*(19/2)=57 yellow crayons.\nFinal Answer: 57"
+   ],
+   "source": "runs/grpo_acc/groups.jsonl, reward call 3, group 2",
+   "note": "有對有錯的一組"
+  },
+  {
+   "question": "Betsy won 5 games of Monopoly.  Helen won twice as many as Betsy and Susan won three times as many as Betsy.  Between them, how many games have they won?",
+   "ground_truth": "30",
+   "completions": [
+    "Let me solve this step by step.\nStep 1: Betsy won 5 games\nStep 2: Helen won 2*5 = 10 games\nStep 3: Susan won 3*5 = 15 games\nStep 4: All together they won 10+5+15 = 30 games\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Betsy won 5 games\nStep 2: Helen won 2*5=10 games\nStep 3: Susan won 3*5=15 games\nStep 4: Together they won 5+10+15=30 games\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Betsy won 5 games.\nStep 2: Helen won 5*2 = 10 games\nStep 3: Susan won 5*3 = 15 games\nStep 4: In total, they have won 10+5+15 = 30 games.\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Betsy: 5 games\nStep 2: Helen: 5 x 2 = 10 games\nStep 3: Susan: 5 x 3 = 15 games\nStep 4: Betsy + Helen + Susan: 5 + 10 + 15 = 30 games\nStep 5: Together, they have won 30 games\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Helen won 5*2=10 games of Monopoly\nStep 2: Susan won 5*3=15 games of Monopoly\nStep 3: So between them they have won 5+10+15=30 games of Monopoly\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Betsy:5 games\nStep 2: Helen:10 games\nStep 3: Susan:15 games\nStep 4: Total: 10+15+5=30 games\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Betsy = 5 games\nStep 2: Helen = 5*2= 10 games\nStep 3: Susan = 5*3=15 games\nStep 4: Total number of games = 5+10+15 = 30 games\nStep 5: They have won 30 games between them.\nFinal Answer: 30",
+    "Let me solve this step by step.\nStep 1: Betsy won 5 games.\nStep 2: Helen won 5*2=10 games.\nStep 3: Susan won 5*3=15 games.\nStep 4: Betsy, Helen and Susan have won 5+10+15=30 games between them.\nFinal Answer: 30"
+   ],
+   "source": "runs/grpo_acc/groups.jsonl, reward call 6, group 0",
+   "note": "8 個全對的一組"
+  }
+ ]
+}
